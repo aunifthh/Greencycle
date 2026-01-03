@@ -67,7 +67,7 @@
                     <div class="accordion-item">
                         <h2 class="accordion-header" id="userHeading">
                             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#userLogin">
-                                User Login
+                                Customer Login
                             </button>
                         </h2>
                         <div id="userLogin" class="accordion-collapse collapse show" data-bs-parent="#loginAccordion">
@@ -133,22 +133,56 @@
             el.classList.toggle("bi-eye-slash");
         }
     </script>
-    <%-- Check if error parameter is present in URL --%>
-<%
-    String error = request.getParameter("error");
-    if ("1".equals(error)) {
-%>
-    <script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Login Failed',
-            text: 'Invalid email or password. Please try again.',
-            confirmButtonColor: '#28a745', // Greencycle Green
-            timer: 3000
-        });
-    </script>
-<%
-    }
-%>
+   <%-- SweetAlert2 Library --%>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Define shared configuration (Greencycle Green)
+        const greenColor = '#28a745';
+
+        // 1. Handle Login Errors
+        if (urlParams.get('error') === '1') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Login Failed',
+                text: 'Invalid email or password. Please try again.',
+                confirmButtonColor: greenColor,
+                timer: 3500 // Automatically closes after 3.5 seconds
+            });
+        }
+
+        // 2. Handle Successful Registration
+        if (urlParams.get('status') === 'registered') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sign Up Successful!',
+                text: 'Your account has been created. You can now log in.',
+                confirmButtonColor: greenColor,
+                timer: 4000
+            });
+        }
+        
+        // 3. Optional: Handle Logout (if you add this later)
+        if (urlParams.get('status') === 'logout') {
+            Swal.fire({
+                icon: 'info',
+                title: 'Logged Out',
+                text: 'You have been successfully logged out.',
+                confirmButtonColor: greenColor,
+                timer: 3000
+            });
+        }
+        
+        // Cleanup: Remove the parameters from the URL without refreshing the page
+        // This prevents the alert from popping up again if the user hits F5/Refresh
+        if (window.history.replaceState) {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+    });
+</script>
 </body>
 </html>

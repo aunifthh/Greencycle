@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 public class StaffBean implements Serializable{
-    private int staffID;
+    private String staffID;
     private String staffName;
     private String staffEmail;
     private String staffPassword;
@@ -19,7 +19,7 @@ public class StaffBean implements Serializable{
 
     public StaffBean() {}
 
-    public int getStaffID() { return staffID;}
+    public String getStaffID() { return staffID;}
     public String getStaffName() { return staffName; }
     public String getStaffEmail() { return staffEmail; }
     public String getStaffPassword() { return staffPassword; }
@@ -28,7 +28,7 @@ public class StaffBean implements Serializable{
     public Timestamp getCreatedAt() { return createdAt; }
     
 
-    public void setStaffID(int staffID) { this.staffID = staffID; }
+    public void setStaffID(String staffID) { this.staffID = staffID; }
     public void setStaffName(String staffName) { this.staffName = staffName; }
     public void setStaffEmail(String staffEmail) { this.staffEmail = staffEmail; }
     public void setStaffPassword(String staffPassword) { this.staffPassword = staffPassword; }

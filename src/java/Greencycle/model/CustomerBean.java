@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 public class CustomerBean implements Serializable {
-    private int customerID;
+    private String customerID;
     private String fullName;
     private String email;
     private String password;
@@ -15,7 +15,7 @@ public class CustomerBean implements Serializable {
     
     public CustomerBean(){}
     
-    public int getCustomerID() { return customerID; }
+    public String getCustomerID() { return customerID; }
     public String getFullName() { return fullName; }
     public String getEmail() { return email; }
     public String getPassword() { return password; }
@@ -24,7 +24,7 @@ public class CustomerBean implements Serializable {
     public String getBankAccountNo() { return bankAccountNo; }
     public Timestamp getCreatedAt() { return createdAt; }
      
-    public void setCustomerID(int customerID) { this.customerID = customerID; }
+    public void setCustomerID(String customerID) { this.customerID = customerID; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     public void setEmail(String email) { this.email = email; }
     public void setPassword(String password) { this.password = password; }
