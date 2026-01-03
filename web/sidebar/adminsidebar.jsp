@@ -53,14 +53,14 @@
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="${pageContext.request.contextPath}/admin/staff.jsp" 
+                            <a href="${pageContext.request.contextPath}/StaffMgmtServlet?action=list" 
                                class="nav-link <%= "staff".equals(currentSub) ? "active" : "" %>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Staff</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="${pageContext.request.contextPath}/admin/customer.jsp" 
+                            <a href="${pageContext.request.contextPath}/admin/customermgmt.jsp" 
                                class="nav-link <%= "customer".equals(currentSub) ? "active" : "" %>">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Customer</p>
