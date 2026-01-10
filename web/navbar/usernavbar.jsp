@@ -1,7 +1,6 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8"%>
 <%@ page import="Greencycle.model.CustomerBean" %>
 <%
-    // Get customer from session (stored as "user" in LoginServlet)
     CustomerBean customer = (CustomerBean) session.getAttribute("user");
     String name = (customer != null) ? customer.getFullName() : "User";
 %>
