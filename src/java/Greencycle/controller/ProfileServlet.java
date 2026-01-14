@@ -20,12 +20,22 @@ import javax.servlet.http.HttpServletResponse;
 @WebServlet("/customer/profile")
 public class ProfileServlet extends HttpServlet {
 
-    private String escapeJs(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+    // Get default address ID from session (now Integer)
+    private Integer getDefaultAddressID(HttpSession session) {
+        Object attr = session.getAttribute("defaultAddressID");
+        return (attr instanceof Integer) ? (Integer) attr : null;
     }
+
+// Set default address ID in session (as Integer)
+    private void setDefaultAddressID(HttpSession session, Integer addressID) {
+        if (addressID != null) {
+            session.setAttribute("defaultAddressID", addressID);
+        } else {
+            session.removeAttribute("defaultAddressID");
+        }
+    }
+
+    // In ProfileServlet.java - doGet method
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -50,51 +60,24 @@ public class ProfileServlet extends HttpServlet {
             return;
         }
 
+        // ✅ LOAD FULL CUSTOMER DATA FROM DATABASE
         String customerID = customer.getCustomerID();
         CustomerDao customerDao = new CustomerDao();
-        CustomerBean fullCustomer = customerDao.getCustomerById(customerID);
+        CustomerBean fullCustomer = customerDao.getCustomerById(customerID); // This must include bank/phone!
+
         if (fullCustomer == null) {
             response.sendRedirect(request.getContextPath() + "/index.jsp?error=1");
             return;
         }
 
+        // Load addresses
         AddressDao addressDao = new AddressDao();
         List<AddressBean> addresses = addressDao.getAddressesByCustomerID(customerID);
+        request.setAttribute("defaultAddressID", getDefaultAddressID(session));
 
-        // Build customer JSON
-        StringBuilder custJson = new StringBuilder();
-        custJson.append("{")
-                .append("\"fullName\":\"").append(escapeJs(fullCustomer.getFullName())).append("\",")
-                .append("\"email\":\"").append(escapeJs(fullCustomer.getEmail())).append("\",")
-                .append("\"phoneNo\":\"").append(escapeJs(fullCustomer.getPhoneNo())).append("\",")
-                .append("\"bankName\":\"").append(escapeJs(fullCustomer.getBankName())).append("\",")
-                .append("\"bankAccountNo\":\"").append(escapeJs(fullCustomer.getBankAccountNo())).append("\"")
-                .append("}");
-
-        // Build addresses JSON (with poscode!)
-        StringBuilder addrJson = new StringBuilder();
-        addrJson.append("[");
-        for (int i = 0; i < addresses.size(); i++) {
-            AddressBean a = addresses.get(i);
-            addrJson.append("{")
-                    .append("\"addressID\":\"").append(a.getAddressID()).append("\",")
-                    .append("\"categoryOfAddress\":\"").append(escapeJs(a.getCategoryOfAddress())).append("\",")
-                    .append("\"addressLine1\":\"").append(escapeJs(a.getAddressLine1())).append("\",")
-                    .append("\"addressLine2\":\"").append(escapeJs(a.getAddressLine2())).append("\",")
-                    .append("\"poscode\":\"").append(escapeJs(a.getPoscode())).append("\",") // ✅ poscode
-                    .append("\"city\":\"").append(escapeJs(a.getCity())).append("\",")
-                    .append("\"state\":\"").append(escapeJs(a.getState())).append("\",")
-                    .append("\"remarks\":\"").append(escapeJs(a.getRemarks())).append("\",") // ✅ Added remarks!
-                    .append("\"isDefault\":false")
-                    .append("}");
-            if (i < addresses.size() - 1) {
-                addrJson.append(",");
-            }
-        }
-        addrJson.append("]");
-
-        request.setAttribute("customerJson", custJson.toString());
-        request.setAttribute("addressesJson", addrJson.toString());
+        // ✅ SET ATTRIBUTES FOR JSP
+        request.setAttribute("customer", fullCustomer); // Full customer with bank/phone
+        request.setAttribute("addresses", addresses);
         request.setAttribute("currentPage", "profile");
 
         request.getRequestDispatcher("/customer/profile.jsp").forward(request, response);
@@ -104,7 +87,7 @@ public class ProfileServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        HttpSession session = request.getSession(false);
+        HttpSession session = request.getSession();
         if (session == null
                 || session.getAttribute("user") == null
                 || !"customer".equals(session.getAttribute("role"))) {
@@ -116,7 +99,7 @@ public class ProfileServlet extends HttpServlet {
         CustomerBean customer = (CustomerBean) session.getAttribute("user");
         String customerID = customer.getCustomerID();
         CustomerDao customerDao = new CustomerDao();
-        AddressDao addressDao = new AddressDao(); // ✅ Must initialize!
+        AddressDao addressDao = new AddressDao();
 
         try {
             if ("updateProfile".equals(action)) {
@@ -134,6 +117,7 @@ public class ProfileServlet extends HttpServlet {
                 } else {
                     response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 }
+
             } else if ("updateBank".equals(action)) {
                 String bankName = request.getParameter("bankName");
                 String bankAccountNo = request.getParameter("bankAccountNo");
@@ -146,48 +130,111 @@ public class ProfileServlet extends HttpServlet {
                 } else {
                     response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 }
+
             } else if ("saveAddress".equals(action)) {
-                String addressID = request.getParameter("addressID");
+                String addressIDStr = request.getParameter("addressID"); // May be null or empty
                 String label = request.getParameter("label");
                 String addressLine1 = request.getParameter("addressLine1");
                 String addressLine2 = request.getParameter("addressLine2");
-                String poscode = request.getParameter("poscode"); // ✅ poscode
+                String poscode = request.getParameter("poscode");
                 String city = request.getParameter("city");
                 String state = request.getParameter("state");
                 String remarks = request.getParameter("remarks");
+                String isDefaultParam = request.getParameter("isDefault");
 
                 AddressBean addr = new AddressBean();
-                if (addressID != null && !addressID.isEmpty()) {
+                addr.setCategoryOfAddress(label);
+                addr.setAddressLine1(addressLine1);
+                addr.setAddressLine2(addressLine2);
+                addr.setPoscode(poscode);
+                addr.setCity(city);
+                addr.setState(state);
+                addr.setRemarks(remarks);
+                addr.setCustomerID(customerID);
+
+                Integer finalAddressID = null;
+
+                if (addressIDStr != null && !addressIDStr.trim().isEmpty()) {
                     // Update existing
-                    addr.setAddressID(addressID);
-                    addr.setCategoryOfAddress(label);
-                    addr.setAddressLine1(addressLine1);
-                    addr.setAddressLine2(addressLine2);
-                    addr.setPoscode(poscode); // ✅ poscode
-                    addr.setCity(city);
-                    addr.setState(state);
-                    addr.setRemarks(remarks);
-                    boolean success = addressDao.updateAddress(addr);
-                    response.setStatus(success ? HttpServletResponse.SC_OK : HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    try {
+                        int addressID = Integer.parseInt(addressIDStr.trim());
+                        addr.setAddressID(addressID);
+                        boolean success = addressDao.updateAddress(addr);
+                        if (!success) {
+                            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                            return;
+                        }
+                        finalAddressID = addressID;
+                    } catch (NumberFormatException e) {
+                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        return;
+                    }
                 } else {
-                    // Create new
-                    String newId = addressDao.generateNextID();
-                    addr.setAddressID(newId);
-                    addr.setCategoryOfAddress(label);
-                    addr.setAddressLine1(addressLine1);
-                    addr.setAddressLine2(addressLine2);
-                    addr.setPoscode(poscode); // ✅ poscode
-                    addr.setCity(city);
-                    addr.setState(state);
-                    addr.setRemarks(remarks);
-                    addr.setCustomerID(customerID);
+                    // Create new — addressID will be auto-generated
                     boolean success = addressDao.saveAddress(addr);
-                    response.setStatus(success ? HttpServletResponse.SC_OK : HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    if (!success) {
+                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                        return;
+                    }
+                    // Optional: if saveAddress sets the generated ID in the bean, use it
+                    finalAddressID = addr.getAddressID(); // Assumes AddressBean.addressID is int and was set by DAO
                 }
+
+                // Handle default address
+                boolean isDefault = "on".equals(isDefaultParam) || "true".equals(isDefaultParam);
+                if (isDefault && finalAddressID != null) {
+                    setDefaultAddressID(session, finalAddressID);
+                } else {
+                    // If this address was previously default, clear it
+                    Integer currentDefault = getDefaultAddressID(session);
+                    if (currentDefault != null && currentDefault.equals(finalAddressID)) {
+                        session.removeAttribute("defaultAddressID");
+                    }
+                }
+
+                response.setStatus(HttpServletResponse.SC_OK);
+
+            } else if ("setDefault".equals(action)) {
+                String addressIDStr = request.getParameter("addressID");
+                if (addressIDStr != null && !addressIDStr.trim().isEmpty()) {
+                    try {
+                        int addressID = Integer.parseInt(addressIDStr.trim());
+                        setDefaultAddressID(session, addressID);
+                        response.setStatus(HttpServletResponse.SC_OK);
+                    } catch (NumberFormatException e) {
+                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    }
+                } else {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                }
+
             } else if ("deleteAddress".equals(action)) {
-                String addressID = request.getParameter("addressID");
+                String addressIDStr = request.getParameter("addressID");
+                if (addressIDStr == null || addressIDStr.trim().isEmpty()) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    return;
+                }
+
+                int addressID;
+                try {
+                    addressID = Integer.parseInt(addressIDStr.trim());
+                } catch (NumberFormatException e) {
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    return;
+                }
+
+                Integer currentDefault = getDefaultAddressID(session);
+                boolean isDeletingDefault = (currentDefault != null && currentDefault == addressID);
+
                 boolean success = addressDao.deleteAddress(addressID);
-                response.setStatus(success ? HttpServletResponse.SC_OK : HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                if (success) {
+                    if (isDeletingDefault) {
+                        session.removeAttribute("defaultAddressID");
+                    }
+                    response.setStatus(HttpServletResponse.SC_OK);
+                } else {
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
