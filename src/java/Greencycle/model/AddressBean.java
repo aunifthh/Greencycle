@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 
 public class AddressBean implements Serializable {
-    private String addressID;
+    private int addressID;
     private String categoryOfAddress; // e.g., "Home", "Office"
     private String addressLine1;
     private String addressLine2;
@@ -19,7 +19,7 @@ public class AddressBean implements Serializable {
     public AddressBean() {}
 
     // Getters and Setters
-    public String getAddressID() { return addressID; }
+    public int getAddressID() { return addressID; }
     public String getCategoryOfAddress() { return categoryOfAddress; }
     public String getAddressLine1() { return addressLine1; }
     public String getAddressLine2() { return addressLine2; }
@@ -30,7 +30,7 @@ public class AddressBean implements Serializable {
     public Timestamp getCreatedAt() { return createdAt; }
     public String getCustomerID() { return customerID; }
     
-    public void setAddressID(String addressID) { this.addressID = addressID; }
+    public void setAddressID(int addressID) { this.addressID = addressID; }
     public void setCategoryOfAddress(String categoryOfAddress) { this.categoryOfAddress = categoryOfAddress; }
     public void setAddressLine1(String addressLine1) { this.addressLine1 = addressLine1; }
     public void setAddressLine2(String addressLine2) { this.addressLine2 = addressLine2; }
