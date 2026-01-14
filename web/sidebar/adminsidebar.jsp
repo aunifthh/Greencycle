@@ -1,5 +1,4 @@
 <%
-    // Get attributes from the main page
     String currentPage = (String) request.getAttribute("currentPage");
     String currentSub = (String) request.getAttribute("currentSub");
 %>
@@ -8,7 +7,6 @@
         <img src="${pageContext.request.contextPath}/images/truck.png" alt="Logo" class="brand-image" />
         <span class="brand-text font-weight-light">Greencycle</span>
     </a>
-
     <div class="sidebar">
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
             <div class="info">
@@ -17,56 +15,49 @@
         </div>
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                
-                <!-- Dashboard -->
                 <li class="nav-item">
-                    <a href="${pageContext.request.contextPath}/admin/dashboard.jsp" 
-                       class="nav-link <%= "dashboard".equals(currentPage) ? "active" : "" %>">
+                    <a href="${pageContext.request.contextPath}/admin/dashboard.jsp" class="nav-link">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
                         <p>Dashboard</p>
                     </a>
                 </li>
-
-                <!-- Recyclable Items -->
                 <li class="nav-item">
-                    <a href="${pageContext.request.contextPath}/admin/recyclable.jsp" 
-                       class="nav-link <%= "recyclable".equals(currentPage) ? "active" : "" %>">
-                        <i class="nav-icon fas fa-recycle"></i>
-                        <p>Recyclable Items</p>
-                    </a>
-                </li>
-
-                <!-- Pickup Requests -->
-                <li class="nav-item">
-                    <a href="${pageContext.request.contextPath}/admin/request.jsp" 
-                       class="nav-link <%= "request".equals(currentPage) ? "active" : "" %>">
+                    <a href="${pageContext.request.contextPath}/RequestServlet?action=list" class="nav-link">
                         <i class="nav-icon fas fa-truck"></i>
-                        <p>Pickup Requests</p>
+                        <p>Request Management</p>
                     </a>
                 </li>
-
-                <!-- Users Treeview -->
-                <li class="nav-item has-treeview <%= "users".equals(currentPage) ? "menu-open" : "" %>">
-                    <a href="#" class="nav-link <%= "users".equals(currentPage) ? "active" : "" %>">
+                <li class="nav-item">
+                    <a href="${pageContext.request.contextPath}/admin/ratemgmt.jsp" class="nav-link">
+                        <i class="nav-icon fas fa-dollar-sign"></i>
+                        <p>Rate Management</p>
+                    </a>
+                </li>
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-users"></i>
                         <p>Users <i class="right fas fa-angle-left"></i></p>
                     </a>
                     <ul class="nav nav-treeview">
                         <li class="nav-item">
-                            <a href="${pageContext.request.contextPath}/StaffMgmtServlet?action=list" 
-                               class="nav-link <%= "staff".equals(currentSub) ? "active" : "" %>">
+                            <a href="${pageContext.request.contextPath}/StaffMgmtServlet?action=list" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Staff</p>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="${pageContext.request.contextPath}/admin/customermgmt.jsp" 
-                               class="nav-link <%= "customer".equals(currentSub) ? "active" : "" %>">
+                            <a href="${pageContext.request.contextPath}/admin/customermgmt.jsp" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Customer</p>
                             </a>
                         </li>
                     </ul>
+                </li>
+                <li class="nav-item">
+                    <a href="${pageContext.request.contextPath}/LogoutServlet" class="nav-link">
+                        <i class="nav-icon fas fa-sign-out-alt"></i>
+                        <p>Logout</p>
+                    </a>
                 </li>
             </ul>
         </nav>

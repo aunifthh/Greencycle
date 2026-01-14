@@ -30,9 +30,11 @@ public class AddressDao {
     }
 
     // Get all addresses for a customer
+    // Get all addresses for a customer
     public List<AddressBean> getAddressesByCustomerID(String customerID) {
         List<AddressBean> addresses = new ArrayList<>();
-        String sql = "SELECT * FROM Address WHERE customerID = ? ORDER BY createdAt DESC";
+        // Fetch addresses owned by customer
+        String sql = "SELECT * FROM APP.ADDRESS WHERE CUSTOMERID = ?";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -42,16 +44,16 @@ public class AddressDao {
 
             while (rs.next()) {
                 AddressBean addr = new AddressBean();
-                addr.setAddressID(rs.getString("addressID"));
-                addr.setCategoryOfAddress(rs.getString("categoryOfAddress"));
-                addr.setAddressLine1(rs.getString("addressLine1"));
-                addr.setAddressLine2(rs.getString("addressLine2"));
-                addr.setPoscode(rs.getString("poscode"));
-                addr.setCity(rs.getString("city"));
-                addr.setState(rs.getString("state"));
-                addr.setRemarks(rs.getString("remarks"));
-                addr.setCreatedAt(rs.getTimestamp("createdAt"));
-                addr.setCustomerID(rs.getString("customerID"));
+                addr.setAddressID(rs.getString("ADDRESSID"));
+                // addr.setCategoryOfAddress(rs.getString("CATEGORYOFADDRESS"));
+                addr.setAddressLine1(rs.getString("ADDRESSLINE1"));
+                addr.setAddressLine2(rs.getString("ADDRESSLINE2"));
+                addr.setPoscode(rs.getString("POSTCODE")); // Fixed column name
+                addr.setCity(rs.getString("CITY"));
+                addr.setState(rs.getString("STATE"));
+                // addr.setRemarks(rs.getString("REMARKS")); // Column appears missing
+                // addr.setCreatedAt(rs.getTimestamp("CREATEDAT")); // Column appears missing
+                addr.setCustomerID(rs.getString("CUSTOMERID"));
                 addresses.add(addr);
             }
         } catch (SQLException e) {
@@ -62,20 +64,20 @@ public class AddressDao {
 
     // Save new address
     public boolean saveAddress(AddressBean address) {
-        String sql = "INSERT INTO Address (addressID, categoryOfAddress, addressLine1, addressLine2, poscode, city, state, remarks, customerID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO Address (addressID, addressLine1, addressLine2, poscode, city, state, remarks, customerID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setString(1, address.getAddressID());
-            ps.setString(2, address.getCategoryOfAddress());
-            ps.setString(3, address.getAddressLine1());
-            ps.setString(4, address.getAddressLine2());
-            ps.setString(5, address.getPoscode());
-            ps.setString(6, address.getCity());
-            ps.setString(7, address.getState());
-            ps.setString(8, address.getRemarks());
-            ps.setString(9, address.getCustomerID());
+            // ps.setString(2, address.getCategoryOfAddress());
+            ps.setString(2, address.getAddressLine1());
+            ps.setString(3, address.getAddressLine2());
+            ps.setString(4, address.getPoscode());
+            ps.setString(5, address.getCity());
+            ps.setString(6, address.getState());
+            ps.setString(7, address.getRemarks());
+            ps.setString(8, address.getCustomerID());
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -86,19 +88,18 @@ public class AddressDao {
 
     // Update address
     public boolean updateAddress(AddressBean address) {
-        String sql = "UPDATE Address SET categoryOfAddress = ?, addressLine1 = ?, addressLine2 = ?, poscode = ?, city = ?, state = ?, remarks = ? WHERE addressID = ?";
+        String sql = "UPDATE Address SET addressLine1 = ?, addressLine2 = ?, poscode = ?, city = ?, state = ?, remarks = ? WHERE addressID = ?";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, address.getCategoryOfAddress());
-            ps.setString(2, address.getAddressLine1());
-            ps.setString(3, address.getAddressLine2());
-            ps.setString(4, address.getPoscode());
-            ps.setString(5, address.getCity());
-            ps.setString(6, address.getState());
-            ps.setString(7, address.getRemarks());
-            ps.setString(8, address.getAddressID());
+            ps.setString(1, address.getAddressLine1());
+            ps.setString(2, address.getAddressLine2());
+            ps.setString(3, address.getPoscode());
+            ps.setString(4, address.getCity());
+            ps.setString(5, address.getState());
+            ps.setString(6, address.getRemarks());
+            ps.setString(7, address.getAddressID());
 
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -120,5 +121,51 @@ public class AddressDao {
             e.printStackTrace();
             return false;
         }
+    }
+
+    // Debug method to diagnose connection and query issues
+    public String getDebugInfo(String customerID) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Debug Log: ");
+
+        try (Connection conn = DBConnection.getConnection()) {
+            sb.append("DB Connected. ");
+
+            // Check total rows
+            try (Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM APP.ADDRESS")) {
+                if (rs.next()) {
+                    sb.append("Total Rows in APP.ADDRESS: " + rs.getInt(1) + ". ");
+                }
+            } catch (Exception e) {
+                sb.append("Error counting rows: " + e.getMessage() + ". ");
+            }
+
+            // Check specific user query
+            String sql = "SELECT * FROM APP.ADDRESS WHERE CUSTOMERID = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, customerID);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        sb.append("Rows Found. Columns: ");
+                        java.sql.ResultSetMetaData md = rs.getMetaData();
+                        int count = md.getColumnCount();
+                        for (int i = 1; i <= count; i++) {
+                            sb.append(md.getColumnName(i) + ", ");
+                        }
+                        sb.append(". ");
+                    } else {
+                        sb.append("No rows found for user. ");
+                    }
+                }
+            } catch (Exception e) {
+                sb.append("Error querying user: " + e.getMessage() + ". ");
+            }
+
+        } catch (SQLException e) {
+            sb.append("DB Connection Failed: " + e.getMessage());
+        }
+
+        return sb.toString();
     }
 }
