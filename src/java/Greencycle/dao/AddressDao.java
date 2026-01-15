@@ -112,4 +112,33 @@ public class AddressDao {
             return false;
         }
     }
+    
+    // In AddressDao
+public AddressBean getAddressByID(String addressID) {
+    String sql = "SELECT * FROM Address WHERE addressID = ?";
+    try (Connection conn = DBConnection.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+
+        ps.setString(1, addressID);
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) {
+            AddressBean addr = new AddressBean();
+            addr.setAddressID(rs.getInt("addressID"));
+            addr.setCategoryOfAddress(rs.getString("categoryOfAddress"));
+            addr.setAddressLine1(rs.getString("addressLine1"));
+            addr.setAddressLine2(rs.getString("addressLine2"));
+            addr.setPoscode(rs.getString("poscode"));
+            addr.setCity(rs.getString("city"));
+            addr.setState(rs.getString("state"));
+            addr.setRemarks(rs.getString("remarks"));
+            addr.setCreatedAt(rs.getTimestamp("createdAt"));
+            addr.setCustomerID(rs.getString("customerID"));
+            return addr;
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+
 }

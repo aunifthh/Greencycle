@@ -21,14 +21,17 @@
                     <body class="hold-transition sidebar-mini layout-fixed">
                         <div class="wrapper">
 
-                             <jsp:include page="../navbar/usernavbar.jsp" />
-                             <jsp:include page="../sidebar/usersidebar.jsp" />
+                             <jsp:include page="../navbar/customernavbar.jsp" />
+                             <jsp:include page="../sidebar/customersidebar.jsp" />
 
                         <div class="content-wrapper">
                         <section class="content-header">
                             <div class="container-fluid d-flex justify-content-between align-items-center">
                             <h3 class="mb-2">Pickup Request / Add Request</h3>
-                            <a href="pickups.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+                           <a href="${pageContext.request.contextPath}/customer/pickups.jsp" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back
+                           </a>
+
                             </div>
                         </section>
 

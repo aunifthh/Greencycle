@@ -30,8 +30,8 @@
 
                                     <body class="hold-transition sidebar-mini">
                                         <div class="wrapper">
-                                            <jsp:include page="/navbar/customernavbar.jsp" />
-                                            <jsp:include page="/sidebar/customersidebar.jsp" />
+                                            <jsp:include page="/navbar/usernavbar.jsp" />
+                                            <jsp:include page="/sidebar/usersidebar.jsp" />
 
                                             <div class="content-wrapper">
                                                 <section class="content-header">

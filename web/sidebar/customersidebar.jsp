@@ -19,7 +19,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="${pageContext.request.contextPath}/customer/requesthistory.jsp" class="nav-link">
+                        <a href="${pageContext.request.contextPath}/customer/pickups.jsp" class="nav-link">
                             <i class="nav-icon fas fa-truck"></i>
                             <p>Pickup Request</p>
                         </a>
