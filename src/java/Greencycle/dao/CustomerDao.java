@@ -3,6 +3,8 @@ package Greencycle.dao;
 import Greencycle.model.CustomerBean;
 import Greencycle.db.DBConnection;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CustomerDao {
 
@@ -131,7 +133,7 @@ public class CustomerDao {
         }
     }
 
-// Update bank info only
+    // Update bank info only
     public boolean updateBankInfo(String customerID, String bankName, String bankAccountNo) {
         String sql = "UPDATE Customer SET bankName = ?, bankAccountNo = ? WHERE customerID = ?";
         try (Connection conn = DBConnection.getConnection();
@@ -144,5 +146,51 @@ public class CustomerDao {
             e.printStackTrace();
             return false;
         }
+    }
+    
+    // READ: Get all customers
+    public List<CustomerBean> getAllCustomers() {
+        List<CustomerBean> list = new ArrayList<>();
+        String sql = "SELECT * FROM Customer ORDER BY customerID ASC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                CustomerBean c = new CustomerBean();
+                c.setCustomerID(rs.getString("customerID"));
+                c.setFullName(rs.getString("fullName"));
+                c.setEmail(rs.getString("email"));
+                c.setPhoneNo(rs.getString("phoneNo"));
+                c.setBankName(rs.getString("bankName"));
+                c.setBankAccountNo(rs.getString("bankAccountNo"));
+                list.add(c);
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    // UPDATE: Edit Customer (including Bank Details)
+    public boolean updateCustomer(CustomerBean c) {
+        String sql = "UPDATE Customer SET fullName=?, email=?, phoneNo=?, bankName=?, bankAccountNo=? WHERE customerID=?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, c.getFullName());
+            ps.setString(2, c.getEmail());
+            ps.setString(3, c.getPhoneNo());
+            ps.setString(4, c.getBankName());
+            ps.setString(5, c.getBankAccountNo());
+            ps.setString(6, c.getCustomerID());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
+    }
+
+    // DELETE: Remove Customer
+    public boolean deleteCustomer(String id) {
+        String sql = "DELETE FROM Customer WHERE customerID=?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); return false; }
     }
 }
