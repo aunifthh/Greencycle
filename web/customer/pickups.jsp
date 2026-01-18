@@ -1,9 +1,22 @@
-<%@ page import="Greencycle.model.PickupBean" %>
-<%@ page import="Greencycle.model.PickupItemBean" %>
+<%@ page contentType="text/html;charset=UTF-8" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.text.DecimalFormat" %>
-<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ page import="Greencycle.model.RequestBean" %>
+<%@ page import="Greencycle.dao.RequestDao" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+
+<%
+    // Ensure data is loaded through controller
+    List<RequestBean> requests = (List<RequestBean>) request.getAttribute("requests");
+    if (requests == null) {
+        // Redirect to controller if accessed directly
+        response.sendRedirect(request.getContextPath() + "/customer/pickups");
+        return;
+    }
+    
+    DecimalFormat df = new DecimalFormat("#,##0.00");
+    RequestDao rDao = new RequestDao();
+%>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -18,6 +31,7 @@
     <style>
         .badge-status { min-width: 90px; text-align: center; }
         button:disabled { opacity:0.6; cursor:not-allowed; }
+        .gap-2 { gap: 0.5rem; }
     </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -36,32 +50,25 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="card">
-                   <div class="card-header">
-                            <div class="d-flex justify-content-between align-items-center w-100">
-                                <h3 class="card-title mb-0">Manage Recyclable Types</h3>
-                                <div class="d-flex gap-2" data-toggle="modal" data-target="#addModal">
-                                    <a href="${pageContext.request.contextPath}/customer/pickupForm.jsp" class="btn btn-success">
-                                        <i class="fas fa-plus"></i> Add Request
-                                    </a>
-
-
-
-                                </div>
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <h3 class="card-title mb-0">Manage Recyclable Types</h3>
+                            <div class="d-flex gap-2">
+                                <a href="${pageContext.request.contextPath}/customer/pickups?action=add" class="btn btn-success">
+                                    <i class="fas fa-plus"></i> Add Request
+                                </a>
                             </div>
                         </div>
+                    </div>
 
                     <div class="card-body">
-                        <%
-                            List<PickupBean> pickups = (List<PickupBean>) request.getAttribute("pickups");
-                            DecimalFormat df = new DecimalFormat("#,##0.00");
-                        %>
                         <table id="pickupTable" class="table table-bordered table-hover">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Item</th>
                                     <th>Location</th>
-                                    <th>Qty (KG)</th>
+                                    <th>Qty</th>
                                     <th>Date</th>
                                     <th>Time</th>
                                     <th>Status</th>
@@ -70,70 +77,109 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <%
-                                if (pickups != null) {
-                                    for (int i = 0; i < pickups.size(); i++) {
-                                        PickupBean pickup = pickups.get(i);
-                                        double totalQty = pickup.getTotalQuantity();
-                                        List<PickupItemBean> items = pickup.getItems();
-                                %>
-                                <tr data-index="<%= i %>">
-                                    <td>REQ<%= String.format("%03d", i+1) %></td>
-                                    <td>
-                                        <%
-                                        for (PickupItemBean item : items) {
-                                            out.print(item.getCategoryID() + " (" + item.getQuantity() + "kg)<br>");
+                            <%
+                                if (requests != null && !requests.isEmpty()) {
+                                    for (int i = 0; i < requests.size(); i++) {
+                                        RequestBean r = requests.get(i);
+                                        double totalQty = r.getEstimatedWeight();
+
+                                        // Build item list with weights like "Plastic (10kg)<br>Paper (5kg)"
+                                        StringBuilder itemList = new StringBuilder();
+                                        if (r.getPlasticWeight() > 0) {
+                                            itemList.append("Plastic (").append(df.format(r.getPlasticWeight())).append("kg)");
                                         }
-                                        %>
-                                    </td>
-                                    <td>
-                                        <%
-                                        if (pickup.getAddress() != null) {
-                                            out.print(pickup.getAddress().getCategoryOfAddress() + " — " +
-                                                      pickup.getAddress().getAddressLine1() + ", " +
-                                                      pickup.getAddress().getCity() + ", " +
-                                                      pickup.getAddress().getState() + ", " +
-                                                      pickup.getAddress().getPoscode());
+                                        if (r.getPaperWeight() > 0) {
+                                            if (itemList.length() > 0) itemList.append("<br>");
+                                            itemList.append("Paper (").append(df.format(r.getPaperWeight())).append("kg)");
+                                        }
+                                        if (r.getMetalWeight() > 0) {
+                                            if (itemList.length() > 0) itemList.append("<br>");
+                                            itemList.append("Metal (").append(df.format(r.getMetalWeight())).append("kg)");
+                                        }
+                                        if (itemList.length() == 0) {
+                                            itemList.append("-");
+                                        }
+
+                                        // Get latest quotation amount
+                                        double totalAmount = rDao.getQuotationAmount(r.getRequestID());
+
+                                        String status = r.getStatus();
+                                        String badgeClass;
+                                        if ("Quoted".equals(status)) {
+                                            badgeClass = "badge-info";
+                                        } else if ("Pending Payment".equals(status) || "Pending".equals(status) || "Pending Pickup".equals(status)) {
+                                            badgeClass = "badge-warning";
+                                        } else if ("Cancelled".equals(status)) {
+                                            badgeClass = "badge-secondary";
+                                        } else if ("Completed".equals(status)) {
+                                            badgeClass = "badge-success";
                                         } else {
-                                            out.print("N/A");
+                                            badgeClass = "badge-danger";
                                         }
-                                        %>
-                                    </td>
+                            %>
+                                <tr data-index="<%= i %>">
+                                    <td>REQ<%= String.format("%03d", i + 1) %></td>
+                                    <td><%= itemList.toString() %></td>
+                                    <td><%= r.getFullAddress() != null ? r.getFullAddress() : "-" %></td>
                                     <td><%= df.format(totalQty) %></td>
-                                    <td><%= pickup.getPickupDate() %></td>
-                                    <td><%= pickup.getPickupTime() != null ? pickup.getPickupTime() : "-" %></td>
+                                    <td><%= r.getPickupDate() != null ? r.getPickupDate() : "-" %></td>
+                                    <td><%= r.getPickupTime() != null ? r.getPickupTime() : "-" %></td>
                                     <td>
-                                        <%
-                                        String status = pickup.getStatus();
-                                        String badgeClass = "badge-info";
-                                        if ("Quoted".equals(status)) badgeClass = "badge-info";
-                                        else if ("Pending Payment".equals(status) || "Pending".equals(status)) badgeClass = "badge-warning";
-                                        else if ("Cancelled".equals(status)) badgeClass = "badge-secondary";
-                                        else badgeClass = "badge-danger";
-                                        %>
                                         <span class="badge <%= badgeClass %> badge-status status"><%= status %></span>
                                     </td>
-                                    <td><%= df.format(pickup.getTotalPrice()) %></td>
-                                    <td>
-                                        <%
-                                        if ("Quoted".equals(status)) {
-                                        %>
-                                            <button class="btn btn-info btn-sm viewQuote"><i class="fas fa-eye"></i> See Quotation</button>
-                                        <%
-                                        } else {
-                                        %>
-                                            <button class="btn btn-danger btn-sm cancel" <%= "Cancelled".equals(status) ? "disabled" : "" %>>
+                                    <td><%= df.format(totalAmount) %></td>
+                                   <td>
+                                    <% 
+                                        java.time.LocalDate today = java.time.LocalDate.now();
+                                        java.time.LocalDate pickupDate = r.getPickupDate() != null ? r.getPickupDate().toLocalDate() : null;
+                                        boolean canCancel = false;
+                                        if (pickupDate != null) {
+                                            canCancel = pickupDate.isAfter(today.plusDays(1)); // at least 2 days ahead
+                                        }
+                                    %>
+
+                                    <% if (!"Cancelled".equals(status) && !"Completed".equals(status)) { %>
+                                        <div style="margin-bottom:5px;">
+                                        <form method="post"
+                                              action="${pageContext.request.contextPath}/RequestServlet?action=cancel_pickup"
+                                              style="display:inline-block; width:100%; text-align:center;">
+                                            <input type="hidden" name="requestID" value="<%= r.getRequestID() %>">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-block <%= canCancel ? "btn-danger cancelBtn" : "btn-secondary" %>"
+                                                    <%= canCancel ? "" : "disabled" %>
+                                                    data-cancancel="<%= canCancel %>"
+                                                    data-date="<%= pickupDate %>">
                                                 <i class="fas fa-times"></i> Cancel
                                             </button>
-                                        <%
-                                        }
-                                        %>
+                                        </form>
+                                    </div>
+                                    <% } %>
+
+                                    <% if ("Quoted".equals(status) && totalAmount > 0) { %>
+                                        <div>
+                                            <a class="btn btn-info btn-sm btn-block"
+                                               href="${pageContext.request.contextPath}/customer/quotation.jsp?requestID=<%= r.getRequestID() %>">
+                                                <i class="fas fa-eye"></i> See Quotation
+                                            </a>
+                                        </div>
+                                    <% } %>
+                                </td>
+                                </tr>
+                            <%
+                                    }
+                                } else {
+                            %>
+                                <tr>
+                                    <td colspan="9" class="text-center">
+                                        <div class="alert alert-info mt-3">
+                                            <i class="fas fa-info-circle"></i> No pickup requests found. 
+                                            <a href="${pageContext.request.contextPath}/customer/pickups?action=add" class="alert-link">Create your first request</a>
+                                        </div>
                                     </td>
                                 </tr>
-                                <%
-                                    }
+                            <%
                                 }
-                                %>
+                            %>
                             </tbody>
                         </table>
                     </div>
@@ -145,118 +191,131 @@
     <jsp:include page="/footer/footer.jsp" />
 
     <!-- Quote Modal -->
-    <div class="modal fade" id="quoteModal">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Quotation Details</h5>
-                </div>
-                <div class="modal-body">
-                    <ul id="quoteList"></ul>
-                    <strong>Total: RM <span id="quoteTotal"></span></strong>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-success" id="accept">Accept</button>
-                    <button class="btn btn-danger" id="reject">Reject</button>
-                    <button class="btn btn-secondary" data-dismiss="modal">Close</button>
-                </div>
+   <!-- Quote Modal -->
+<div class="modal fade" id="quoteModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Quotation Details</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <ul id="quoteItems"></ul>
+                <strong>Total: RM <span id="quoteTotal"></span></strong>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" id="acceptQuoteBtn">Accept</button>
+                <button class="btn btn-danger" id="rejectQuoteBtn">Reject</button>
+                <button class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
+</div>
 
-<script src="../app/plugins/jquery/jquery.min.js"></script>
-<script src="../app/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-<script src="../app/plugins/datatables/jquery.dataTables.min.js"></script>
-<script src="../app/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
 
-<script>
-$('#pickupTable').DataTable();
+    <script src="../app/plugins/jquery/jquery.min.js"></script>
+    <script src="../app/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../app/plugins/datatables/jquery.dataTables.min.js"></script>
+    <script src="../app/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
 
-let pickups = [];
-<%
-if (pickups != null) {
-    for (PickupBean pickup : pickups) {
-%>
-pickups.push({
-    status: "<%= pickup.getStatus() %>",
-    totalPrice: <%= pickup.getTotalPrice() %>,
-    items: [
-        <% for (PickupItemBean item : pickup.getItems()) { %>
-        { category: "<%= item.getCategoryID() %>", quantity: <%= item.getQuantity() %>, subtotal: <%= item.getSubtotal() %> },
-        <% } %>
-    ]
-});
-<%
-    }
-}
-%>
+  <script>
+    $(document).ready(function() {
 
-let currentIndex = null;
+        // Initialize DataTable
+        $('#pickupTable').DataTable();
 
-// VIEW QUOTE
-$('.viewQuote').click(function(){
-    currentIndex = $(this).closest('tr').data('index');
-    const r = pickups[currentIndex];
-    $('#quoteList').html(r.items.map(i=>`<li>${i.category} — ${i.quantity}kg (RM ${i.subtotal.toFixed(2)})</li>`));
-    $('#quoteTotal').text(r.totalPrice.toFixed(2));
+        // ================= Cancel Button =================
+        $('.cancelBtn').click(function() {
+            const $btn = $(this);
+            const canCancel = $btn.data('cancancel');
+            const pickupDate = $btn.data('date');
 
-    if(['Pending Payment','Quotation Rejected','Cancelled'].includes(r.status)){
-        $('#accept,#reject').prop('disabled', true);
-    } else {
-        $('#accept,#reject').prop('disabled', false);
-    }
+            if (!canCancel) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Cannot Cancel',
+                    text: 'Pickup can be cancelled at least 2 days before the selected pickup date!',
+                });
+                return;
+            }
 
-    $('#quoteModal').modal('show');
-});
+            const form = $btn.closest('form');
 
-// ACCEPT QUOTE
-$('#accept').click(()=>{
-    if(currentIndex===null) return;
-    pickups[currentIndex].status = "Pending Payment";
-    updateRowStatus(currentIndex, "Pending Payment", "badge-warning");
-    disableQuoteButton(currentIndex);
-    Swal.fire('Accepted','Quotation accepted','success');
-    $('#quoteModal').modal('hide');
-});
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you want to cancel this pickup request?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, cancel it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit form via POST to cancel
+                    form.submit();
 
-// REJECT QUOTE
-$('#reject').click(()=>{
-    if(currentIndex===null) return;
-    pickups[currentIndex].status = "Quotation Rejected";
-    updateRowStatus(currentIndex, "Quotation Rejected", "badge-danger");
-    disableQuoteButton(currentIndex);
-    Swal.fire('Rejected','Quotation rejected','success');
-    $('#quoteModal').modal('hide');
-});
+                    // Update button UI immediately
+                    $btn.prop('disabled', true)
+                        .removeClass('btn-danger cancelBtn')
+                        .addClass('btn-secondary')
+                        .text('Cancelled');
+                }
+            });
+        });
 
-// CANCEL user-added requests
-$('.cancel').click(function(){
-    let idx = $(this).closest('tr').data('index');
-    Swal.fire({
-        title:'Cancel pickup?',
-        icon:'warning',
-        showCancelButton:true
-    }).then(res=>{
-        if(res.isConfirmed){
-            pickups[idx].status = "Cancelled";
-            updateRowStatus(idx, "Cancelled", "badge-secondary");
-            $(this).prop('disabled',true);
-            Swal.fire('Cancelled','Pickup request cancelled','success');
-        }
+        // ================= Quotation Modal =================
+        $('.view-quote-btn').click(function() {
+            const requestID = $(this).data('requestid');
+            const total = $(this).data('total');
+
+            // Fetch quotation details via AJAX
+            $.get('${pageContext.request.contextPath}/RequestServlet', {
+                action: 'get_quotation',
+                requestID: requestID
+            }, function(response) {
+                const items = JSON.parse(response);
+
+                $('#quoteList').empty();
+                items.forEach(item => {
+                    $('#quoteList').append(
+                        `<li>${item.name}: ${item.weight} kg x RM ${item.rate} = RM ${item.amount}</li>`
+                    );
+                });
+                $('#quoteTotal').text(total.toFixed(2));
+                $('#quoteModal').modal('show');
+
+                // Accept quotation
+                $('#acceptQuoteBtn').off('click').click(function() {
+                    $.post('${pageContext.request.contextPath}/RequestServlet', {
+                        action: 'accept_quotation',
+                        requestID: requestID
+                    }, function() {
+                        Swal.fire('Accepted!', 'You have accepted the quotation.', 'success');
+                        $('#quoteModal').modal('hide');
+                        location.reload(); // refresh table to update status
+                    });
+                });
+
+                // Reject quotation
+                $('#rejectQuoteBtn').off('click').click(function() {
+                    $.post('${pageContext.request.contextPath}/RequestServlet', {
+                        action: 'reject_quotation',
+                        requestID: requestID
+                    }, function() {
+                        Swal.fire('Rejected!', 'You have rejected the quotation.', 'success');
+                        $('#quoteModal').modal('hide');
+                        location.reload(); // refresh table to update status
+                    });
+                });
+            });
+        });
+
     });
-});
+    </script>
 
-function updateRowStatus(index, text, badgeClass){
-    let row = $('#pickupTable tbody tr').eq(index);
-    let $status = row.find('.status');
-    $status.removeClass().addClass(`badge ${badgeClass} badge-status`).text(text);
-}
 
-function disableQuoteButton(index){
-    let row = $('#pickupTable tbody tr').eq(index);
-    row.find('.viewQuote').prop('disabled',true);
-}
-</script>
-
+</div>
 </body>
 </html>
