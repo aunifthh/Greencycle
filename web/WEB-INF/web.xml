@@ -8,6 +8,10 @@
         <servlet-name>CustomerMgmtServlet</servlet-name>
         <servlet-class>Greencycle.controller.CustomerMgmtServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>RecyclableItemServlet</servlet-name>
+        <servlet-class>Greencycle.controller.RecyclableItemServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>CustomerDashboardServlet</servlet-name>
         <url-pattern>/CustomerDashboardServlet</url-pattern>
@@ -15,6 +19,10 @@
     <servlet-mapping>
         <servlet-name>CustomerMgmtServlet</servlet-name>
         <url-pattern>/CustomerMgmtServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>RecyclableItemServlet</servlet-name>
+        <url-pattern>/RecyclableItemServlet</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

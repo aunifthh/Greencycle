@@ -28,7 +28,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="${pageContext.request.contextPath}/admin/ratemgmt.jsp" class="nav-link">
+                    <a href="${pageContext.request.contextPath}/admin/recyclableitemmgmt.jsp" class="nav-link">
                         <i class="nav-icon fas fa-dollar-sign"></i>
                         <p>Rate Management</p>
                     </a>
