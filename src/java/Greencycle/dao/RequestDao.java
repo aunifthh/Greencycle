@@ -4,7 +4,9 @@ import Greencycle.model.RequestBean;
 import Greencycle.db.DBConnection;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RequestDao {
 
@@ -364,4 +366,23 @@ public class RequestDao {
         }
         return list;
     }
+    
+        public Map<String, Integer> getPickupCountsByDate(Date pickupDate) {
+        Map<String, Integer> counts = new HashMap<>();
+        String sql = "SELECT pickupTime, COUNT(*) AS count FROM PickupRequest WHERE pickupDate = ? GROUP BY pickupTime";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, pickupDate);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                counts.put(rs.getString("pickupTime"), rs.getInt("count"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return counts;
+    }
+
 }

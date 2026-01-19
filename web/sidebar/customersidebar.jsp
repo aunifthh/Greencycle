@@ -25,15 +25,9 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="${pageContext.request.contextPath}/customer/profile.jsp" class="nav-link">
+                        <a href="${pageContext.request.contextPath}/customer/profile" class="nav-link">
                             <i class="nav-icon fas fa-user-cog"></i>
                             <p>Profile Management</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="${pageContext.request.contextPath}/LogoutServlet" class="nav-link">
-                            <i class="nav-icon fas fa-sign-out-alt"></i>
-                            <p>Logout</p>
                         </a>
                     </li>
                 </ul>

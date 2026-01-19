@@ -1,69 +1,77 @@
 package Greencycle.controller;
 
 import Greencycle.dao.AddressDao;
-import Greencycle.dao.CategoryDao;
-import Greencycle.dao.PickupDao;
-import Greencycle.model.PickupBean;
-import Greencycle.model.PickupItemBean;
+import Greencycle.dao.RateDao;
+import Greencycle.dao.RequestDao;
 import Greencycle.model.AddressBean;
+import Greencycle.model.RequestBean;
+import Greencycle.model.CustomerBean;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.sql.Date;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 
-@WebServlet("/pickups")
+@WebServlet("/customer/pickups")
 public class PickupController extends HttpServlet {
 
-    private PickupDao pickupDao = new PickupDao();
-    private CategoryDao categoryDao = new CategoryDao();
-    private AddressDao addressDao = new AddressDao();
+    private final RequestDao requestDao = new RequestDao();
+    private final RateDao rateDao = new RateDao();
+    private final AddressDao addressDao = new AddressDao();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("customerId") == null) {
+        CustomerBean customer = (session != null) ? (CustomerBean) session.getAttribute("user") : null;
+        if (customer == null) {
             response.sendRedirect(request.getContextPath() + "/index.jsp");
             return;
         }
 
-        String customerID = (String) session.getAttribute("customerId");
+        String customerID = customer.getCustomerID();
         String action = request.getParameter("action");
 
         if ("add".equals(action)) {
-            // Load categories & addresses for pickup form
-            request.setAttribute("categories", categoryDao.getAll()); // must return categoryID + categoryName + rate
-            request.setAttribute("addresses", addressDao.getAddressesByCustomerID(customerID));
+            // Load recyclable item rates & addresses for pickup form
+            Map<String, Double> rates = rateDao.getAllRates();
+            List<AddressBean> addresses = addressDao.getAddressesByCustomerID(customerID);
+
+            request.setAttribute("rates", rates);
+            request.setAttribute("addresses", addresses);
             request.getRequestDispatcher("/customer/pickupForm.jsp").forward(request, response);
 
         } else {
-            // Show pickup list
-            List<PickupBean> pickups = pickupDao.getAllPickups(customerID);
-
-            // Populate items and address
-            for (PickupBean pickup : pickups) {
-                // Fetch pickup items with category names
-                pickup.setItems(pickupDao.getItemsByRequestID(pickup.getRequestID()));
-
-                // Fetch address object
-                if (pickup.getAddressID() != null) {
-                    pickup.setAddress(addressDao.getAddressByID(pickup.getAddressID()));
-                }
-
-                // Ensure items list is not null
-                if (pickup.getItems() == null) {
-                    pickup.setItems(new ArrayList<>());
-                }
-            }
-
-            request.setAttribute("pickups", pickups);
-            // ✅ Forward to JSP
+            // Show pickup list for this customer
+            List<RequestBean> requests = requestDao.getRequestsByCustomer(customerID);
+            request.setAttribute("requests", requests);
             request.getRequestDispatcher("/customer/pickups.jsp").forward(request, response);
         }
+        
+        if ("check_times".equals(action)) {
+        String pickupDateStr = request.getParameter("pickupDate");
+        if (pickupDateStr != null && !pickupDateStr.isEmpty()) {
+            Date pickupDate = Date.valueOf(pickupDateStr);
+            Map<String, Integer> counts = requestDao.getPickupCountsByDate(pickupDate);
+
+            // Return JSON
+            response.setContentType("application/json");
+            response.setContentType("application/json");
+            StringBuilder sb = new StringBuilder("{");
+            for (String key : counts.keySet()) {
+                sb.append("\"").append(key).append("\":").append(counts.get(key)).append(",");
+            }
+            if (sb.length() > 1) sb.setLength(sb.length() - 1); // remove trailing comma
+            sb.append("}");
+            response.getWriter().write(sb.toString());
+            return;
+        }
+    }
+
     }
 
     @Override
@@ -71,46 +79,55 @@ public class PickupController extends HttpServlet {
             throws ServletException, IOException {
 
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("customerId") == null) {
+        CustomerBean customer = (session != null) ? (CustomerBean) session.getAttribute("user") : null;
+        if (customer == null) {
             response.sendRedirect(request.getContextPath() + "/index.jsp");
             return;
         }
 
-        String customerID = (String) session.getAttribute("customerId");
+        String customerID = customer.getCustomerID();
 
-        // Build PickupBean
-        PickupBean pickup = new PickupBean();
-        pickup.setCustomerID(customerID);
-        pickup.setAddressID(request.getParameter("pickupAddress")); // from form
-        pickup.setPickupDate(request.getParameter("pickupDate"));
-        pickup.setPickupTime(request.getParameter("pickupTime"));
-        pickup.setRemarks(request.getParameter("remarks"));
-        pickup.setTotalPrice(Double.parseDouble(request.getParameter("totalPrice")));
+        // Basic pickup request fields
+        String addressID = request.getParameter("addressID");
+        String pickupDateStr = request.getParameter("pickupDate");
+        String pickupTime = request.getParameter("pickupTime");
 
-        // Pickup items
-        String[] categoryIDs = request.getParameterValues("category[]"); // use categoryID
-        String[] quantities = request.getParameterValues("quantity[]");
-        String[] subtotals = request.getParameterValues("subtotal[]");
+        double plasticWeight = parseDoubleOrZero(request.getParameter("plasticWeight"));
+        double paperWeight = parseDoubleOrZero(request.getParameter("paperWeight"));
+        double metalWeight = parseDoubleOrZero(request.getParameter("metalWeight"));
 
-        List<PickupItemBean> items = new ArrayList<>();
-        if (categoryIDs != null) {
-            for (int i = 0; i < categoryIDs.length; i++) {
-                double qty = Double.parseDouble(quantities[i]);
-                if (qty < 3) qty = 3; // minimum 3 kg
+        // Create pickup request in DB
+        int requestID = requestDao.createRequest(customerID, addressID, plasticWeight, paperWeight, metalWeight);
 
-                PickupItemBean item = new PickupItemBean();
-                item.setCategoryID(categoryIDs[i]); // matches your bean
-                item.setQuantity(qty);
-                item.setSubtotal(Double.parseDouble(subtotals[i]));
-                items.add(item);
+        if (requestID > 0) {
+            // Create initial quotation using current rates
+            Map<String, Double> rates = rateDao.getAllRates();
+            double plasticRate = rates.getOrDefault("Plastic", 0.0);
+            double paperRate = rates.getOrDefault("Paper", 0.0);
+            double metalRate = rates.getOrDefault("Metal", 0.0);
+
+            requestDao.createInitialQuotation(requestID, plasticWeight, paperWeight, metalWeight,
+                    plasticRate, paperRate, metalRate);
+
+            // Optionally store preferred pickup schedule immediately (if user already chose date/time)
+            if (pickupDateStr != null && !pickupDateStr.isEmpty() && pickupTime != null && !pickupTime.isEmpty()) {
+                Date pickupDate = Date.valueOf(pickupDateStr);
+                requestDao.updatePickupSchedule(requestID, pickupDate, pickupTime);
             }
+
+            // Redirect back to pickups list for this customer
+            response.sendRedirect(request.getContextPath() + "/customer/pickups");
+        } else {
+            // Failed to create request
+            response.sendRedirect(request.getContextPath() + "/customer/pickupForm.jsp?error=request");
         }
-        pickup.setItems(items);
+    }
 
-        // Save pickup to database
-        pickupDao.addPickup(pickup);
-
-        // Redirect to list
-        response.sendRedirect(request.getContextPath() + "/pickups");
+    private double parseDoubleOrZero(String val) {
+        try {
+            return (val == null || val.isEmpty()) ? 0.0 : Double.parseDouble(val);
+        } catch (NumberFormatException ex) {
+            return 0.0;
+        }
     }
 }
