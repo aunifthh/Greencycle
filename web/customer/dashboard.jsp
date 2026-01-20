@@ -154,36 +154,41 @@
                                             <td><span class="badge <%= badgeClass %>"><%= "Verified".equals(status) ? "Quoted" : status %></span></td>
                                             <td><%= df.format(totalAmount) %></td>
                                             <td>
-                                                <% if ("Quoted".equals(status) || "Verified".equals(status)) { %>
-                                                    <form method="post" action="${pageContext.request.contextPath}/RequestServlet" style="display:inline-block;">
-                                                        <input type="hidden" name="action" value="view_quotation">
-                                                        <input type="hidden" name="requestID" value="<%= r.getRequestID() %>">
-                                                        <button type="button" class="btn btn-info btn-sm view-quote-btn"
-                                                            data-requestid="<%= r.getRequestID() %>" data-status="Quoted"
-                                                            data-address="<%= r.getFullAddress() != null ? r.getFullAddress() : "-" %>"
-                                                            data-date="<%= r.getPickupDate() != null ? r.getPickupDate() : "-" %>"
-                                                            data-time="<%= r.getPickupTime() != null ? r.getPickupTime() : "-" %>"
-                                                            data-plastic="<%= r.getPlasticWeight() %>"
-                                                            data-paper="<%= r.getPaperWeight() %>"
-                                                            data-metal="<%= r.getMetalWeight() %>"
-                                                            data-total="<%= totalAmount %>">
-                                                            <i class="fas fa-eye"></i> View Quotation
-                                                        </button>
-                                                    </form>
-                                                <% } else { %>
-                                                    <button type="button" class="btn btn-secondary btn-sm view-details-btn"
-                                                        data-requestid="<%= r.getRequestID() %>" data-status="<%= status %>"
-                                                        data-address="<%= r.getFullAddress() != null ? r.getFullAddress() : "-" %>"
-                                                        data-date="<%= r.getPickupDate() != null ? r.getPickupDate() : "-" %>"
-                                                        data-time="<%= r.getPickupTime() != null ? r.getPickupTime() : "-" %>"
-                                                        data-plastic="<%= r.getPlasticWeight() %>"
-                                                        data-paper="<%= r.getPaperWeight() %>"
-                                                        data-metal="<%= r.getMetalWeight() %>"
-                                                        data-total="<%= totalAmount %>">
-                                                        <i class="fas fa-eye"></i> View
-                                                    </button>
-                                                <% } %>
-                                            </td>
+    <c:if test="${r.status == 'Quoted'}">
+        <button type="button"
+            class="btn btn-info btn-sm open-quote-modal"
+            data-mode="quote"
+            data-requestid="${r.requestID}"
+            data-status="Quoted"
+            data-address="${r.fullAddress}"
+            data-date="${r.pickupDate}"
+            data-time="${r.pickupTime}"
+            data-plastic="${r.plasticWeight}"
+            data-paper="${r.paperWeight}"
+            data-metal="${r.metalWeight}"
+            data-total="${r.quotationTotal}">
+            <i class="fas fa-eye"></i> See Quotation
+        </button>
+    </c:if>
+
+    <c:if test="${r.status == 'Completed' || r.status == 'Quotation Rejected'}">
+        <button type="button"
+            class="btn btn-secondary btn-sm open-quote-modal"
+            data-mode="view"
+            data-requestid="${r.requestID}"
+            data-status="${r.status}"
+            data-address="${r.fullAddress}"
+            data-date="${r.pickupDate}"
+            data-time="${r.pickupTime}"
+            data-plastic="${r.plasticWeight}"
+            data-paper="${r.paperWeight}"
+            data-metal="${r.metalWeight}"
+            data-total="${r.quotationTotal}">
+            <i class="fas fa-eye"></i> View
+        </button>
+    </c:if>
+</td>
+
                                         </tr>
                                         <% } } else { %>
                                         <tr><td colspan="9" class="text-center">No recent requests</td></tr>
