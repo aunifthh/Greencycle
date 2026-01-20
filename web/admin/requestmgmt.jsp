@@ -71,12 +71,25 @@
                                                                                 <%= req.getFullAddress() %>
                                                                             </td>
                                                                             <td>
-                                                                                <span
-                                                                                    class="badge badge-<%= req.getStatus().equals("Completed") ? "success" :
-                                                                                    req.getStatus().equals("Cancelled")
-                                                                                    ? "danger" : "info" %>">
-                                                                                    <%= req.getStatus() %>
-                                                                                </span>
+                                                                                <%
+                                                                                    String status = req.getStatus();
+                                                                                    String badgeClass;
+                                                                                    if ("Pending Pickup".equals(status)) {
+                                                                                        badgeClass = "badge-warning";
+                                                                                    } else if ("Quoted".equals(status) || "Verified".equals(status)) {
+                                                                                        badgeClass = "badge-info";
+                                                                                    } else if ("Pending Payment".equals(status)) {
+                                                                                        badgeClass = "badge-warning";
+                                                                                    } else if ("Quotation Rejected".equals(status) || "Cancelled".equals(status)) {
+                                                                                        badgeClass = "badge-secondary";
+                                                                                    } else if ("Completed".equals(status)) {
+                                                                                        badgeClass = "badge-success";
+                                                                                    } else {
+                                                                                        badgeClass = "badge-danger";
+                                                                                    }
+                                                                                    String textLabel = "Verified".equals(status) ? "Quoted" : status;
+                                                                                %>
+                                                                                <span class="badge <%= badgeClass %>"><%= textLabel %></span>
                                                                             </td>
                                                                             <td>
                                                                                 <%= hasDate ? req.getPickupDate() + " "
@@ -203,5 +216,4 @@
                             }
                         </script>
                     </body>
-
-                    </html>
+ </html>

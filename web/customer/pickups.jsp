@@ -6,14 +6,13 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 
 <%
-    // Ensure data is loaded through controller
+    // Load requests from controller
     List<RequestBean> requests = (List<RequestBean>) request.getAttribute("requests");
     if (requests == null) {
-        // Redirect to controller if accessed directly
         response.sendRedirect(request.getContextPath() + "/customer/pickups");
         return;
     }
-    
+
     DecimalFormat df = new DecimalFormat("#,##0.00");
     RequestDao rDao = new RequestDao();
 %>
@@ -83,11 +82,9 @@
                                         RequestBean r = requests.get(i);
                                         double totalQty = r.getEstimatedWeight();
 
-                                        // Build item list with weights like "Plastic (10kg)<br>Paper (5kg)"
+                                        // Build item list
                                         StringBuilder itemList = new StringBuilder();
-                                        if (r.getPlasticWeight() > 0) {
-                                            itemList.append("Plastic (").append(df.format(r.getPlasticWeight())).append("kg)");
-                                        }
+                                        if (r.getPlasticWeight() > 0) itemList.append("Plastic (").append(df.format(r.getPlasticWeight())).append("kg)");
                                         if (r.getPaperWeight() > 0) {
                                             if (itemList.length() > 0) itemList.append("<br>");
                                             itemList.append("Paper (").append(df.format(r.getPaperWeight())).append("kg)");
@@ -96,74 +93,87 @@
                                             if (itemList.length() > 0) itemList.append("<br>");
                                             itemList.append("Metal (").append(df.format(r.getMetalWeight())).append("kg)");
                                         }
-                                        if (itemList.length() == 0) {
-                                            itemList.append("-");
-                                        }
+                                        if (itemList.length() == 0) itemList.append("-");
 
-                                        // Get latest quotation amount
                                         double totalAmount = rDao.getQuotationAmount(r.getRequestID());
 
                                         String status = r.getStatus();
                                         String badgeClass;
-                                        if ("Quoted".equals(status)) {
-                                            badgeClass = "badge-info";
-                                        } else if ("Pending Payment".equals(status) || "Pending".equals(status) || "Pending Pickup".equals(status)) {
-                                            badgeClass = "badge-warning";
-                                        } else if ("Cancelled".equals(status)) {
-                                            badgeClass = "badge-secondary";
-                                        } else if ("Completed".equals(status)) {
-                                            badgeClass = "badge-success";
-                                        } else {
-                                            badgeClass = "badge-danger";
-                                        }
+                                        if ("Quoted".equals(status) || "Verified".equals(status)) badgeClass = "badge-info";
+                                        else if ("Pending Payment".equals(status) || "Pending".equals(status) || "Pending Pickup".equals(status)) badgeClass = "badge-warning";
+                                        else if ("Cancelled".equals(status) || "Quotation Rejected".equals(status)) badgeClass = "badge-secondary";
+                                        else if ("Completed".equals(status)) badgeClass = "badge-success";
+                                        else badgeClass = "badge-danger";
+
+                                        String displayLabel = "Verified".equals(status) ? "Quoted" : ("Cancelled".equals(status) ? "Quotation Rejected" : status);
+
+                                        java.time.LocalDate today = java.time.LocalDate.now();
+                                        java.time.LocalDate pickupDate = r.getPickupDate() != null ? r.getPickupDate().toLocalDate() : null;
+                                        boolean canCancel = "Pending Pickup".equals(status) && pickupDate != null && pickupDate.isAfter(today.plusDays(1));
                             %>
                                 <tr data-index="<%= i %>">
-                                    <td>REQ<%= String.format("%03d", i + 1) %></td>
+                                    <td data-order="<%= r.getRequestID() %>">REQ<%= r.getRequestID() %></td>
                                     <td><%= itemList.toString() %></td>
                                     <td><%= r.getFullAddress() != null ? r.getFullAddress() : "-" %></td>
                                     <td><%= df.format(totalQty) %></td>
                                     <td><%= r.getPickupDate() != null ? r.getPickupDate() : "-" %></td>
                                     <td><%= r.getPickupTime() != null ? r.getPickupTime() : "-" %></td>
-                                    <td>
-                                        <span class="badge <%= badgeClass %> badge-status status"><%= status %></span>
-                                    </td>
+                                    <td><span class="badge <%= badgeClass %> badge-status status"><%= displayLabel %></span></td>
                                     <td><%= df.format(totalAmount) %></td>
-                                   <td>
-                                    <% 
-                                        java.time.LocalDate today = java.time.LocalDate.now();
-                                        java.time.LocalDate pickupDate = r.getPickupDate() != null ? r.getPickupDate().toLocalDate() : null;
-                                        boolean canCancel = false;
-                                        if (pickupDate != null) {
-                                            canCancel = pickupDate.isAfter(today.plusDays(1)); // at least 2 days ahead
-                                        }
-                                    %>
-
-                                    <% if (!"Cancelled".equals(status) && !"Completed".equals(status)) { %>
+                                    <td>
+                                        <% if (!"Cancelled".equals(status) && !"Completed".equals(status)) { %>
                                         <div style="margin-bottom:5px;">
-                                        <form method="post"
-                                              action="${pageContext.request.contextPath}/RequestServlet?action=cancel_pickup"
-                                              style="display:inline-block; width:100%; text-align:center;">
-                                            <input type="hidden" name="requestID" value="<%= r.getRequestID() %>">
-                                            <button type="button"
-                                                    class="btn btn-sm btn-block <%= canCancel ? "btn-danger cancelBtn" : "btn-secondary" %>"
-                                                    <%= canCancel ? "" : "disabled" %>
-                                                    data-cancancel="<%= canCancel %>"
-                                                    data-date="<%= pickupDate %>">
-                                                <i class="fas fa-times"></i> Cancel
-                                            </button>
-                                        </form>
-                                    </div>
-                                    <% } %>
-
-                                    <% if ("Quoted".equals(status) && totalAmount > 0) { %>
-                                        <div>
-                                            <a class="btn btn-info btn-sm btn-block"
-                                               href="${pageContext.request.contextPath}/customer/quotation.jsp?requestID=<%= r.getRequestID() %>">
-                                                <i class="fas fa-eye"></i> See Quotation
-                                            </a>
+                                            <form method="post" action="${pageContext.request.contextPath}/RequestServlet" class="cancel-form">
+                                                <input type="hidden" name="action" value="cancel_pickup">
+                                                <input type="hidden" name="requestID" value="<%= r.getRequestID() %>">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-block cancelBtn <%= canCancel ? "btn-danger" : "btn-secondary" %>"
+                                                        <%= canCancel ? "" : "disabled" %>>
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </form>
                                         </div>
-                                    <% } %>
-                                </td>
+                                        <% } %>
+
+                                        <% if (("Quoted".equals(status) || "Verified".equals(status)) && totalAmount > 0) { %>
+                                        <div>
+                                            <button type="button"
+                                            type="button" class="btn btn-secondary btn-sm view-btn"
+                                            data-mode="quote"
+                                            data-requestid="<%= r.getRequestID() %>"
+                                            data-status="<%= displayLabel %>"
+                                            data-address="<%= r.getFullAddress() != null ? r.getFullAddress() : "-" %>"
+                                            data-date="<%= r.getPickupDate() != null ? r.getPickupDate() : "-" %>"
+                                            data-time="<%= r.getPickupTime() != null ? r.getPickupTime() : "-" %>"
+                                            data-plastic="<%= r.getPlasticWeight() %>"
+                                            data-paper="<%= r.getPaperWeight() %>"
+                                            data-metal="<%= r.getMetalWeight() %>"
+                                            data-total="<%= totalAmount %>">
+                                            <i class="fas fa-eye"></i> View Quotation
+                                            </button>
+                                        </div>
+                                        <% } %>
+
+                                        <% if ("Completed".equals(status) || "Cancelled".equals(status) || "Quotation Rejected".equals(status)) { %>
+                                        <div style="margin-top:5px;">
+                                            <button type="button"
+                                                class="btn btn-secondary btn-sm btn-block open-quote-modal"
+                                                data-mode="view"
+                                                data-requestid="<%= r.getRequestID() %>"
+                                                data-status="<%= displayLabel %>"
+                                                data-address="<%= r.getFullAddress() != null ? r.getFullAddress() : "-" %>"
+                                                data-date="<%= r.getPickupDate() != null ? r.getPickupDate() : "-" %>"
+                                                data-time="<%= r.getPickupTime() != null ? r.getPickupTime() : "-" %>"
+                                                data-plastic="<%= r.getPlasticWeight() %>"
+                                                data-paper="<%= r.getPaperWeight() %>"
+                                                data-metal="<%= r.getMetalWeight() %>"
+                                                data-total="<%= totalAmount %>">
+                                                <i class="fas fa-eye"></i> View
+                                            </button>
+
+                                        </div>
+                                        <% } %>
+                                    </td>
                                 </tr>
                             <%
                                     }
@@ -190,131 +200,163 @@
 
     <jsp:include page="/footer/footer.jsp" />
 
-    <!-- Quote Modal -->
-   <!-- Quote Modal -->
-<div class="modal fade" id="quoteModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">Quotation Details</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+    <!-- Modal -->
+    <div class="modal fade" id="quoteModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Quotation / Details</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div><strong>Request ID:</strong> <span id="q_id"></span></div>
+                    <div><strong>Status:</strong> <span id="q_status"></span></div>
+                    <div><strong>Address:</strong> <span id="q_address"></span></div>
+                    <div><strong>Pickup Date:</strong> <span id="q_date"></span></div>
+                    <div><strong>Pickup Time:</strong> <span id="q_time"></span></div>
+                    <hr>
+                    <ul id="quoteItems"></ul>
+                    <div><strong>Plastic (kg):</strong> <span id="q_plastic"></span></div>
+                    <div><strong>Paper (kg):</strong> <span id="q_paper"></span></div>
+                    <div><strong>Metal (kg):</strong> <span id="q_metal"></span></div>
+                    <div><strong>Total Weight (kg):</strong> <span id="q_est"></span></div>
+                    <hr>
+                    <strong>Total (RM): <span id="quoteTotal"></span></strong>
+                </div>
+                <div class="modal-footer">
+                <!-- Hidden form for Accept / Reject -->
+                <form id="acceptRejectForm" method="post" action="${pageContext.request.contextPath}/RequestServlet" style="display:inline-block;">
+                    <input type="hidden" name="requestID" id="modalRequestID" value="">
+                    <input type="hidden" name="action" id="modalAction" value="">
+                    <button type="button" class="btn btn-success" id="acceptQuoteBtn">Accept</button>
+                    <button type="button" class="btn btn-danger" id="rejectQuoteBtn">Reject</button>
+                </form>
+
+                <!-- Close button outside the form -->
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
-            <div class="modal-body">
-                <ul id="quoteItems"></ul>
-                <strong>Total: RM <span id="quoteTotal"></span></strong>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-success" id="acceptQuoteBtn">Accept</button>
-                <button class="btn btn-danger" id="rejectQuoteBtn">Reject</button>
-                <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+
             </div>
         </div>
     </div>
-</div>
-
 
     <script src="../app/plugins/jquery/jquery.min.js"></script>
     <script src="../app/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="../app/plugins/datatables/jquery.dataTables.min.js"></script>
     <script src="../app/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
 
-  <script>
-    $(document).ready(function() {
+<script>
+$(document).ready(function() {
+    // Initialize DataTable
+    $('#pickupTable').DataTable({ order: [[0, 'desc']] });
 
-        // Initialize DataTable
-        $('#pickupTable').DataTable();
+    // ================= Cancel Button =================
+    // Use delegated event to handle dynamically rendered buttons
+    $(document).on('click', '.cancelBtn', function() {
+        const $btn = $(this);
+        if ($btn.is(':disabled')) {
+            Swal.fire(
+                'Cannot Cancel',
+                'Pickup can be cancelled at least 2 days before pickup date!',
+                'warning'
+            );
+            return;
+        }
 
-        // ================= Cancel Button =================
-        $('.cancelBtn').click(function() {
-            const $btn = $(this);
-            const canCancel = $btn.data('cancancel');
-            const pickupDate = $btn.data('date');
+        const $form = $btn.closest('form');
 
-            if (!canCancel) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Cannot Cancel',
-                    text: 'Pickup can be cancelled at least 2 days before the selected pickup date!',
-                });
-                return;
+        Swal.fire({
+            title: 'Are you sure?',
+            text: 'Do you want to cancel this pickup request?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, cancel it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $form.submit(); // Submit the form to servlet
             }
-
-            const form = $btn.closest('form');
-
-            Swal.fire({
-                title: 'Are you sure?',
-                text: "Do you want to cancel this pickup request?",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, cancel it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Submit form via POST to cancel
-                    form.submit();
-
-                    // Update button UI immediately
-                    $btn.prop('disabled', true)
-                        .removeClass('btn-danger cancelBtn')
-                        .addClass('btn-secondary')
-                        .text('Cancelled');
-                }
-            });
         });
-
-        // ================= Quotation Modal =================
-        $('.view-quote-btn').click(function() {
-            const requestID = $(this).data('requestid');
-            const total = $(this).data('total');
-
-            // Fetch quotation details via AJAX
-            $.get('${pageContext.request.contextPath}/RequestServlet', {
-                action: 'get_quotation',
-                requestID: requestID
-            }, function(response) {
-                const items = JSON.parse(response);
-
-                $('#quoteList').empty();
-                items.forEach(item => {
-                    $('#quoteList').append(
-                        `<li>${item.name}: ${item.weight} kg x RM ${item.rate} = RM ${item.amount}</li>`
-                    );
-                });
-                $('#quoteTotal').text(total.toFixed(2));
-                $('#quoteModal').modal('show');
-
-                // Accept quotation
-                $('#acceptQuoteBtn').off('click').click(function() {
-                    $.post('${pageContext.request.contextPath}/RequestServlet', {
-                        action: 'accept_quotation',
-                        requestID: requestID
-                    }, function() {
-                        Swal.fire('Accepted!', 'You have accepted the quotation.', 'success');
-                        $('#quoteModal').modal('hide');
-                        location.reload(); // refresh table to update status
-                    });
-                });
-
-                // Reject quotation
-                $('#rejectQuoteBtn').off('click').click(function() {
-                    $.post('${pageContext.request.contextPath}/RequestServlet', {
-                        action: 'reject_quotation',
-                        requestID: requestID
-                    }, function() {
-                        Swal.fire('Rejected!', 'You have rejected the quotation.', 'success');
-                        $('#quoteModal').modal('hide');
-                        location.reload(); // refresh table to update status
-                    });
-                });
-            });
-        });
-
     });
-    </script>
 
+    // ================= View Quotation / Details Modal =================
+$(document).on('click', '.view-quote-btn', function() {
+    const $btn = $(this);
+    const requestID = $btn.data('requestid');
+    const status = $btn.data('status');
+    const address = $btn.data('address');
+    const date = $btn.data('date');
+    const time = $btn.data('time');
+    const plastic = parseFloat($btn.data('plastic')) || 0;
+    const paper = parseFloat($btn.data('paper')) || 0;
+    const metal = parseFloat($btn.data('metal')) || 0;
+    const total = parseFloat($btn.data('total')) || 0;
+
+    // Populate modal
+    $('#q_id').text('REQ' + requestID);
+    $('#q_status').text(status);
+    $('#q_address').text(address);
+    $('#q_date').text(date);
+    $('#q_time').text(time);
+    $('#q_plastic').text(plastic.toFixed(2));
+    $('#q_paper').text(paper.toFixed(2));
+    $('#q_metal').text(metal.toFixed(2));
+    $('#q_est').text((plastic + paper + metal).toFixed(2));
+    $('#quoteTotal').text(total.toFixed(2));
+
+    $('#quoteItems').empty();
+    if (plastic > 0) $('#quoteItems').append('<li>Plastic: ' + plastic.toFixed(2) + ' kg</li>');
+    if (paper > 0) $('#quoteItems').append('<li>Paper: ' + paper.toFixed(2) + ' kg</li>');
+    if (metal > 0) $('#quoteItems').append('<li>Metal: ' + metal.toFixed(2) + ' kg</li>');
+
+    // Set requestID in hidden form
+    $('#modalRequestID').val(requestID);
+
+    // Show Accept / Reject buttons only for Quotation statuses
+    if (status === 'Quoted' || status === 'Verified') {
+        $('#acceptQuoteBtn').show();
+        $('#rejectQuoteBtn').show();
+    } else {
+        $('#acceptQuoteBtn').hide();
+        $('#rejectQuoteBtn').hide();
+    }
+
+    // Accept click
+    $('#acceptQuoteBtn').off('click').on('click', function() {
+        $('#modalAction').val('accept_quotation'); // servlet action
+        $('#acceptRejectForm').submit();
+    });
+
+    // Reject click
+    $('#rejectQuoteBtn').off('click').on('click', function() {
+        $('#modalAction').val('reject_quotation'); // servlet action
+        $('#acceptRejectForm').submit();
+    });
+
+    $('#quoteModal').modal('show');
+});
+
+        $(document).on('click', '.view-btn', function(){
+            const $btn = $(this);
+            $('#q_id').text('REQ' + $btn.data('requestid'));
+            $('#q_status').text($btn.data('status'));
+            $('#q_address').text($btn.data('address'));
+            $('#q_date').text($btn.data('date'));
+            $('#q_time').text($btn.data('time'));
+            let p = parseFloat($btn.data('plastic')) || 0;
+            let pa = parseFloat($btn.data('paper')) || 0;
+            let m = parseFloat($btn.data('metal')) || 0;
+            $('#q_plastic').text(p.toFixed(2));
+            $('#q_paper').text(pa.toFixed(2));
+            $('#q_metal').text(m.toFixed(2));
+            $('#q_est').text((p+pa+m).toFixed(2));
+            $('#quoteTotal').text(parseFloat($btn.data('total')).toFixed(2));
+            $('#quoteModal').modal('show');
+        });
+
+});
+</script>
 
 </div>
 </body>

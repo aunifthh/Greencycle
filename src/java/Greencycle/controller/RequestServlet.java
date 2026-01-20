@@ -145,29 +145,38 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
-    // Customer accepts quotation and schedules pickup
+    
+    // Customer accepts quotation (from modal)
     private void handleAcceptQuotation(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        int requestID = Integer.parseInt(request.getParameter("requestID"));
-        Date pickupDate = Date.valueOf(request.getParameter("pickupDate"));
-        String pickupTime = request.getParameter("pickupTime");
 
-        boolean success = requestDao.updatePickupSchedule(requestID, pickupDate, pickupTime);
+        int requestID = Integer.parseInt(request.getParameter("requestID"));
+
+        boolean success = requestDao.updateStatus(requestID, "Pending Payment");
 
         if (success) {
-            response.sendRedirect("customer/requesthistory.jsp?status=scheduled");
+            response.sendRedirect("customer/pickups.jsp?success=accepted");
         } else {
-            response.sendRedirect("customer/quotation.jsp?requestID=" + requestID + "&error=schedule");
+            response.sendRedirect("customer/pickups.jsp?error=accept");
         }
     }
 
-    // Customer rejects quotation
+
+    // Customer rejects quotation (from modal)
     private void handleRejectQuotation(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
+
         int requestID = Integer.parseInt(request.getParameter("requestID"));
-        requestDao.cancelRequest(requestID);
-        response.sendRedirect("customer/requesthistory.jsp?status=cancelled");
+
+        boolean success = requestDao.updateStatus(requestID, "Quotation Rejected");
+
+        if (success) {
+            response.sendRedirect("customer/pickups.jsp?status=rejected");
+        } else {
+            response.sendRedirect("customer/pickups.jsp?error=reject");
+        }
     }
+
 
     // Staff verifies weight on-site
     private void handleVerifyWeight(HttpServletRequest request, HttpServletResponse response, HttpSession session)

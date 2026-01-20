@@ -384,5 +384,19 @@ public class RequestDao {
 
         return counts;
     }
+        
+        public boolean updateRequestStatus(int requestID, String status) {
+    String sql = "UPDATE PICKUPREQUEST SET status=? WHERE requestID=?";
+    try (Connection conn = DBConnection.getConnection();
+         PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setString(1, status);
+        ps.setInt(2, requestID);
+        return ps.executeUpdate() > 0;
+    } catch (SQLException e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+
 
 }
