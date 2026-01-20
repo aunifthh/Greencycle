@@ -100,6 +100,10 @@ public class RequestServlet extends HttpServlet {
                 handleReleasePayment(request, response);
                 break;
 
+            case "cancel_pickup":
+                handleCancelPickup(request, response);
+                break;
+
             default:
                 response.sendRedirect("index.jsp");
                 break;
@@ -120,9 +124,17 @@ public class RequestServlet extends HttpServlet {
         double paperWeight = Double.parseDouble(request.getParameter("paperWeight"));
         double metalWeight = Double.parseDouble(request.getParameter("metalWeight"));
 
+        // Parse Pickup Date and Time
+        String dateStr = request.getParameter("pickupDate");
+        String timeStr = request.getParameter("pickupTime");
+        Date pickupDate = null;
+        if (dateStr != null && !dateStr.isEmpty()) {
+            pickupDate = Date.valueOf(dateStr);
+        }
+
         // Create request
         int requestID = requestDao.createRequest(customer.getCustomerID(), addressID, plasticWeight, paperWeight,
-                metalWeight);
+                metalWeight, pickupDate, timeStr);
 
         if (requestID > 0) {
             // Get rates and create initial quotation
@@ -136,7 +148,9 @@ public class RequestServlet extends HttpServlet {
                     plasticRate, paperRate, metalRate);
 
             if (quotationCreated) {
-                response.sendRedirect("customer/quotation.jsp?requestID=" + requestID);
+                // Redirect to History since status is Pending Pickup now, not directly showing
+                // Quote for scheduling
+                response.sendRedirect("customer/pickups?status=success");
             } else {
                 response.sendRedirect("customer/pickuprequest.jsp?error=quotation");
             }
@@ -155,7 +169,7 @@ public class RequestServlet extends HttpServlet {
         boolean success = requestDao.updatePickupSchedule(requestID, pickupDate, pickupTime);
 
         if (success) {
-            response.sendRedirect("customer/requesthistory.jsp?status=scheduled");
+            response.sendRedirect("customer/pickups?status=scheduled");
         } else {
             response.sendRedirect("customer/quotation.jsp?requestID=" + requestID + "&error=schedule");
         }
@@ -166,7 +180,7 @@ public class RequestServlet extends HttpServlet {
             throws IOException {
         int requestID = Integer.parseInt(request.getParameter("requestID"));
         requestDao.cancelRequest(requestID);
-        response.sendRedirect("customer/requesthistory.jsp?status=cancelled");
+        response.sendRedirect("customer/pickups?status=cancelled");
     }
 
     // Staff verifies weight on-site
@@ -222,7 +236,7 @@ public class RequestServlet extends HttpServlet {
             throws IOException {
         int requestID = Integer.parseInt(request.getParameter("requestID"));
         requestDao.acceptVerifiedQuotation(requestID);
-        response.sendRedirect("customer/requesthistory.jsp?status=accepted");
+        response.sendRedirect("customer/pickups?status=accepted");
     }
 
     // Customer rejects verified quotation
@@ -230,7 +244,7 @@ public class RequestServlet extends HttpServlet {
             throws IOException {
         int requestID = Integer.parseInt(request.getParameter("requestID"));
         requestDao.cancelRequest(requestID);
-        response.sendRedirect("customer/requesthistory.jsp?status=rejected");
+        response.sendRedirect("customer/pickups?status=rejected");
     }
 
     // Admin releases payment
@@ -243,6 +257,20 @@ public class RequestServlet extends HttpServlet {
             response.sendRedirect("RequestServlet?action=list&status=completed");
         } else {
             response.sendRedirect("RequestServlet?action=list&error=payment");
+        }
+    }
+
+    // Customer cancels pickup
+    private void handleCancelPickup(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        int requestID = Integer.parseInt(request.getParameter("requestID"));
+        // Use the existing cancelRequest method from DAO
+        boolean success = requestDao.cancelRequest(requestID);
+
+        if (success) {
+            response.sendRedirect("customer/pickups?status=cancelled");
+        } else {
+            response.sendRedirect("customer/pickups?error=cancel_failed");
         }
     }
 

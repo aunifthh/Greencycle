@@ -119,90 +119,47 @@
                                                             </h3>
                                                         </div>
 
-                                                        <div class="alert alert-warning">
-                                                            <i class="icon fas fa-exclamation-triangle"></i>
-                                                            <strong>Note:</strong> This is an estimated quotation based
-                                                            on your provided weights.
-                                                            Our staff will verify the actual weight during pickup. Final
-                                                            payment may vary.
-                                                        </div>
+
                                                         <% } %>
                                             </div>
 
                                             <% if ("Quoted".equals(req.getStatus())) { %>
                                                 <div class="card-footer">
-                                                    <h5>Accept this quotation?</h5>
+                                                    <h5>Final Verified Quotation</h5>
+                                                    <div class="alert alert-info">
+                                                        <i class="fas fa-info-circle"></i>
+                                                        <strong>Note:</strong>
+                                                        This quotation reflects the actual weight verified by our staff
+                                                        generally during the pickup or drop-off process.
+                                                        <br>
+                                                        Please accept the quotation to proceed with payment processing.
+                                                    </div>
+
                                                     <form method="POST"
-                                                        action="${pageContext.request.contextPath}/RequestServlet?action=accept_quotation"
+                                                        action="${pageContext.request.contextPath}/RequestServlet?action=accept_verified"
                                                         class="d-inline">
                                                         <input type="hidden" name="requestID"
                                                             value="<%= req.getRequestID() %>">
 
-                                                        <div class="form-group">
-                                                            <label>Select Pickup Date</label>
-                                                            <input type="date" name="pickupDate" class="form-control"
-                                                                required
-                                                                min="<%= java.time.LocalDate.now().plusDays(1) %>">
-                                                        </div>
-
-                                                        <div class="form-group">
-                                                            <label>Select Pickup Time</label>
-                                                            <select name="pickupTime" class="form-control" required>
-                                                                <option value="">-- Select Time --</option>
-                                                                <option value="09:00-12:00">Morning (9:00 AM - 12:00 PM)
-                                                                </option>
-                                                                <option value="14:00-17:00">Afternoon (2:00 PM - 5:00
-                                                                    PM)</option>
-                                                            </select>
-                                                        </div>
-
                                                         <button type="submit" class="btn btn-success">
-                                                            <i class="fas fa-check"></i> Accept & Schedule Pickup
+                                                            <i class="fas fa-check"></i> Accept Quotation
                                                         </button>
                                                     </form>
 
                                                     <button type="button" class="btn btn-danger" data-toggle="modal"
                                                         data-target="#rejectModal">
-                                                        <i class="fas fa-times"></i> Reject Quotation
+                                                        <i class="fas fa-times"></i> Reject
                                                     </button>
 
-                                                    <a href="requesthistory.jsp" class="btn btn-default">Back to
+                                                    <a href="pickups" class="btn btn-default">Back to
                                                         History</a>
                                                 </div>
-                                                <% } else if ("Verified".equals(req.getStatus())) { %>
+                                                <% } else { %>
                                                     <div class="card-footer">
-                                                        <h5>Final Verified Quotation</h5>
-                                                        <div class="alert alert-warning">
-                                                            <i class="fas fa-exclamation-circle"></i>
-                                                            <strong>IMPORTANT:</strong><br>
-                                                            The items have been weighed and verified by our staff.
-                                                            <br>
-                                                            By clicking "Accept", you agree that this amount is final.
-                                                            <br>
-                                                            Payment will be processed and released to your account
-                                                            within <strong>1 week</strong>.
-                                                        </div>
-                                                        <form method="POST"
-                                                            action="${pageContext.request.contextPath}/RequestServlet?action=accept_verified"
-                                                            class="d-inline">
-                                                            <input type="hidden" name="requestID"
-                                                                value="<%= req.getRequestID() %>">
-                                                            <button type="submit" class="btn btn-success">
-                                                                <i class="fas fa-check"></i> Accept Verified Amount
-                                                            </button>
-                                                        </form>
-
-                                                        <a href="${pageContext.request.contextPath}/RequestServlet?action=reject_verified&requestID=<%= req.getRequestID() %>"
-                                                            class="btn btn-danger">
-                                                            <i class="fas fa-times"></i> Reject
-                                                        </a>
+                                                        <a href="pickups" class="btn btn-primary">Back to
+                                                            History</a>
                                                     </div>
-                                                    <% } else { %>
-                                                        <div class="card-footer">
-                                                            <a href="requesthistory.jsp" class="btn btn-primary">Back to
-                                                                History</a>
-                                                        </div>
-                                                        <% } %>
+                                                    <% } %>
                                         </div>
 
                                     </div>

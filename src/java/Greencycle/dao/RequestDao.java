@@ -139,10 +139,10 @@ public class RequestDao {
 
     // Customer creates pickup request with material weights
     public int createRequest(String customerID, String addressID, double plasticWeight, double paperWeight,
-            double metalWeight) { // Changed addressID to String
-        String sql = "INSERT INTO PickupRequest (customerID, addressID, status, requestedDate, plasticWeight, paperWeight, metalWeight, estimatedWeight) "
+            double metalWeight, Date pickupDate, String pickupTime) { // Changed addressID to String
+        String sql = "INSERT INTO PickupRequest (customerID, addressID, status, requestedDate, plasticWeight, paperWeight, metalWeight, estimatedWeight, pickupDate, pickupTime) "
                 +
-                "VALUES (?, ?, 'Quoted', CURRENT_DATE, ?, ?, ?, ?)";
+                "VALUES (?, ?, 'Pending Pickup', CURRENT_DATE, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -153,6 +153,8 @@ public class RequestDao {
             ps.setDouble(4, paperWeight);
             ps.setDouble(5, metalWeight);
             ps.setDouble(6, totalWeight);
+            ps.setDate(7, pickupDate);
+            ps.setString(8, pickupTime);
 
             int rows = ps.executeUpdate();
             if (rows > 0) {
@@ -206,14 +208,17 @@ public class RequestDao {
 
     // Cancel request (customer rejects quotation)
     public boolean cancelRequest(int requestID) {
-        return updateStatus(requestID, "Cancelled");
+        return updateStatus(requestID, "Rejected");
     }
 
     // Staff updates with verified weight
     public boolean updateVerifiedWeight(int requestID, double plasticWeight, double paperWeight, double metalWeight,
             double plasticRate, double paperRate, double metalRate, String staffID) {
-        // Update request with actual weights
-        String updateSql = "UPDATE PickupRequest SET plasticWeight = ?, paperWeight = ?, metalWeight = ?, estimatedWeight = ? WHERE requestID = ?";
+        // Update request with actual weights (Use these columns for the STAFF's values
+        // now)
+        // NOTE: We are NOT updating estimatedWeight, preserving the customer's original
+        // input.
+        String updateSql = "UPDATE PickupRequest SET plasticWeight = ?, paperWeight = ?, metalWeight = ? WHERE requestID = ?";
         double totalWeight = plasticWeight + paperWeight + metalWeight;
         double totalAmount = (plasticWeight * plasticRate) + (paperWeight * paperRate) + (metalWeight * metalRate);
 
@@ -223,24 +228,21 @@ public class RequestDao {
             ps1.setDouble(1, plasticWeight);
             ps1.setDouble(2, paperWeight);
             ps1.setDouble(3, metalWeight);
-            ps1.setDouble(4, totalWeight);
-            ps1.setInt(5, requestID);
+            ps1.setInt(4, requestID);
             ps1.executeUpdate();
 
-            // Create verified quotation
-            String quoteSql = "INSERT INTO Quotation (requestID, staffID, actualWeight, totalAmount, quotationType) VALUES (?, ?, ?, ?, 'VERIFIED')";
-            System.out.println("DEBUG: Inserting Quotation -> RequestID: " + requestID + ", Amount: " + totalAmount);
+            // Create INITIAL quotation (Staff sets the initial quote based on their weigh)
+            String quoteSql = "INSERT INTO Quotation (requestID, staffID, actualWeight, totalAmount, quotationType) VALUES (?, ?, ?, ?, 'INITIAL')";
 
             PreparedStatement ps2 = conn.prepareStatement(quoteSql);
             ps2.setInt(1, requestID);
             ps2.setString(2, staffID);
             ps2.setDouble(3, totalWeight);
             ps2.setDouble(4, totalAmount);
-            int rows = ps2.executeUpdate();
-            System.out.println("DEBUG: Inserted Quotation Rows: " + rows);
+            ps2.executeUpdate();
 
-            // Update status to Verified (waiting for customer acceptance)
-            updateStatus(requestID, "Verified");
+            // Update status to Quoted (waiting for customer acceptance)
+            updateStatus(requestID, "Quoted");
 
             return true;
         } catch (SQLException e) {
@@ -251,12 +253,29 @@ public class RequestDao {
 
     // Customer accepts verified weight on-site
     public boolean acceptVerifiedQuotation(int requestID) {
-        return updateStatus(requestID, "Pending Payment");
+        // Update status to Pending Payment
+        boolean statusUpdated = updateStatus(requestID, "Pending Payment");
+
+        if (statusUpdated) {
+            // Update the latest quotation to VERIFIED
+            // Simpler approach: Update the most recent quotation for this request or just
+            // all INITIALs (since there should be only one active chain).
+
+            String genericUpdate = "UPDATE Quotation SET quotationType = 'VERIFIED' WHERE requestID = ?";
+            try (Connection conn = DBConnection.getConnection();
+                    PreparedStatement ps = conn.prepareStatement(genericUpdate)) {
+                ps.setInt(1, requestID);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return statusUpdated;
     }
 
     // Admin releases payment
     public boolean releasePayment(int requestID) {
-        return updateStatus(requestID, "Completed");
+        return updateStatus(requestID, "Payment Completed");
     }
 
     // Get request by ID (for viewing details)
@@ -366,13 +385,13 @@ public class RequestDao {
         }
         return list;
     }
-    
-        public Map<String, Integer> getPickupCountsByDate(Date pickupDate) {
+
+    public Map<String, Integer> getPickupCountsByDate(Date pickupDate) {
         Map<String, Integer> counts = new HashMap<>();
         String sql = "SELECT pickupTime, COUNT(*) AS count FROM PickupRequest WHERE pickupDate = ? GROUP BY pickupTime";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, pickupDate);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {

@@ -51,26 +51,27 @@ public class PickupController extends HttpServlet {
             request.setAttribute("requests", requests);
             request.getRequestDispatcher("/customer/pickups.jsp").forward(request, response);
         }
-        
-        if ("check_times".equals(action)) {
-        String pickupDateStr = request.getParameter("pickupDate");
-        if (pickupDateStr != null && !pickupDateStr.isEmpty()) {
-            Date pickupDate = Date.valueOf(pickupDateStr);
-            Map<String, Integer> counts = requestDao.getPickupCountsByDate(pickupDate);
 
-            // Return JSON
-            response.setContentType("application/json");
-            response.setContentType("application/json");
-            StringBuilder sb = new StringBuilder("{");
-            for (String key : counts.keySet()) {
-                sb.append("\"").append(key).append("\":").append(counts.get(key)).append(",");
+        if ("check_times".equals(action)) {
+            String pickupDateStr = request.getParameter("pickupDate");
+            if (pickupDateStr != null && !pickupDateStr.isEmpty()) {
+                Date pickupDate = Date.valueOf(pickupDateStr);
+                Map<String, Integer> counts = requestDao.getPickupCountsByDate(pickupDate);
+
+                // Return JSON
+                response.setContentType("application/json");
+                response.setContentType("application/json");
+                StringBuilder sb = new StringBuilder("{");
+                for (String key : counts.keySet()) {
+                    sb.append("\"").append(key).append("\":").append(counts.get(key)).append(",");
+                }
+                if (sb.length() > 1)
+                    sb.setLength(sb.length() - 1); // remove trailing comma
+                sb.append("}");
+                response.getWriter().write(sb.toString());
+                return;
             }
-            if (sb.length() > 1) sb.setLength(sb.length() - 1); // remove trailing comma
-            sb.append("}");
-            response.getWriter().write(sb.toString());
-            return;
         }
-    }
 
     }
 
@@ -88,6 +89,7 @@ public class PickupController extends HttpServlet {
         String customerID = customer.getCustomerID();
 
         // Basic pickup request fields
+        // Basic pickup request fields
         String addressID = request.getParameter("addressID");
         String pickupDateStr = request.getParameter("pickupDate");
         String pickupTime = request.getParameter("pickupTime");
@@ -96,8 +98,15 @@ public class PickupController extends HttpServlet {
         double paperWeight = parseDoubleOrZero(request.getParameter("paperWeight"));
         double metalWeight = parseDoubleOrZero(request.getParameter("metalWeight"));
 
+        // Parse Date
+        Date pickupDate = null;
+        if (pickupDateStr != null && !pickupDateStr.isEmpty()) {
+            pickupDate = Date.valueOf(pickupDateStr);
+        }
+
         // Create pickup request in DB
-        int requestID = requestDao.createRequest(customerID, addressID, plasticWeight, paperWeight, metalWeight);
+        int requestID = requestDao.createRequest(customerID, addressID, plasticWeight, paperWeight, metalWeight,
+                pickupDate, pickupTime);
 
         if (requestID > 0) {
             // Create initial quotation using current rates
@@ -108,12 +117,6 @@ public class PickupController extends HttpServlet {
 
             requestDao.createInitialQuotation(requestID, plasticWeight, paperWeight, metalWeight,
                     plasticRate, paperRate, metalRate);
-
-            // Optionally store preferred pickup schedule immediately (if user already chose date/time)
-            if (pickupDateStr != null && !pickupDateStr.isEmpty() && pickupTime != null && !pickupTime.isEmpty()) {
-                Date pickupDate = Date.valueOf(pickupDateStr);
-                requestDao.updatePickupSchedule(requestID, pickupDate, pickupTime);
-            }
 
             // Redirect back to pickups list for this customer
             response.sendRedirect(request.getContextPath() + "/customer/pickups");

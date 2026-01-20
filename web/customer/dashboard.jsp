@@ -80,7 +80,7 @@
                                             <div class="icon">
                                                 <i class="fas fa-truck"></i>
                                             </div>
-                                            <a href="${pageContext.request.contextPath}/customer/requesthistory.jsp"
+                                            <a href="${pageContext.request.contextPath}/customer/pickups"
                                                 class="small-box-footer">
                                                 Track Requests <i class="fas fa-arrow-circle-right"></i>
                                             </a>
