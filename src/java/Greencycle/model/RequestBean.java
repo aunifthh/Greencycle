@@ -22,6 +22,9 @@ public class RequestBean {
     // Optional: For display purposes (Joined data)
     private String customerName; // From Customer table
     private String fullAddress; // From Address table
+    private String bankName; // From Customer table
+    private String bankAccountNumber; // From Customer table
+    private double quotationAmount; // From Quotation table
 
     public RequestBean() {
     }
@@ -128,5 +131,29 @@ public class RequestBean {
 
     public void setPickupTime(String pickupTime) {
         this.pickupTime = pickupTime;
+    }
+
+    public String getBankName() {
+        return bankName;
+    }
+
+    public void setBankName(String bankName) {
+        this.bankName = bankName;
+    }
+
+    public String getBankAccountNumber() {
+        return bankAccountNumber;
+    }
+
+    public void setBankAccountNumber(String bankAccountNumber) {
+        this.bankAccountNumber = bankAccountNumber;
+    }
+
+    public double getQuotationAmount() {
+        return quotationAmount;
+    }
+
+    public void setQuotationAmount(double quotationAmount) {
+        this.quotationAmount = quotationAmount;
     }
 }

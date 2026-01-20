@@ -8,6 +8,10 @@
         <servlet-name>CustomerMgmtServlet</servlet-name>
         <servlet-class>Greencycle.controller.CustomerMgmtServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>StaffProfileServlet</servlet-name>
+        <servlet-class>Greencycle.controller.StaffProfileServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>CustomerDashboardServlet</servlet-name>
         <url-pattern>/CustomerDashboardServlet</url-pattern>
@@ -15,6 +19,18 @@
     <servlet-mapping>
         <servlet-name>CustomerMgmtServlet</servlet-name>
         <url-pattern>/CustomerMgmtServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>StaffProfileServlet</servlet-name>
+        <url-pattern>/StaffProfileServlet</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>StaffDashboardServlet</servlet-name>
+        <servlet-class>Greencycle.controller.StaffDashboardServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>StaffDashboardServlet</servlet-name>
+        <url-pattern>/StaffDashboardServlet</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>

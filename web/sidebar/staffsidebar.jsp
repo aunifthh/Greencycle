@@ -13,7 +13,7 @@
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column">
                     <li class="nav-item">
-                        <a href="${pageContext.request.contextPath}/staff/dashboard.jsp" class="nav-link">
+                        <a href="${pageContext.request.contextPath}/StaffDashboardServlet" class="nav-link">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
                             <p>Dashboard</p>
                         </a>
@@ -22,6 +22,12 @@
                         <a href="${pageContext.request.contextPath}/RequestServlet?action=list" class="nav-link">
                             <i class="nav-icon fas fa-truck"></i>
                             <p>Request Management</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="${pageContext.request.contextPath}/StaffProfileServlet" class="nav-link">
+                            <i class="nav-icon fas fa-user-cog"></i>
+                            <p>My Profile</p>
                         </a>
                     </li>
                 </ul>

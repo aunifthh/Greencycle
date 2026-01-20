@@ -87,7 +87,8 @@
                                                                                     <input type="number" step="0.01"
                                                                                         name="rate_<%= entry.getKey() %>"
                                                                                         class="form-control"
-                                                                                        value="<%= String.format("%.2f", entry.getValue()) %>"
+                                                                                        value="<%= String.format("
+                                                                                        %.2f", entry.getValue()) %>"
                                                                                     required>
                                                                                 </div>
                                                                             </td>

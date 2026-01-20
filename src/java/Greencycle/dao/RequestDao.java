@@ -13,7 +13,7 @@ public class RequestDao {
     // Retrieve all requests (for Admin) - Joined with Customer and Address
     public List<RequestBean> getAllRequests() {
         List<RequestBean> list = new ArrayList<>();
-        String sql = "SELECT r.*, c.fullName, a.addressLine1, a.city " +
+        String sql = "SELECT r.*, c.fullName, c.bankName, c.bankAccountNo, a.addressLine1, a.city " +
                 "FROM PickupRequest r " +
                 "JOIN Customer c ON r.customerID = c.customerID " +
                 "LEFT JOIN Address a ON r.addressID = a.addressID " +
@@ -34,6 +34,9 @@ public class RequestDao {
 
                 // Joined fields
                 bean.setCustomerName(rs.getString("fullName"));
+                bean.setBankName(rs.getString("bankName"));
+                bean.setBankAccountNumber(rs.getString("bankAccountNo"));
+
                 String addr = rs.getString("addressLine1");
                 if (rs.getString("city") != null) {
                     addr += ", " + rs.getString("city");
@@ -47,6 +50,9 @@ public class RequestDao {
                 bean.setPaperWeight(rs.getDouble("paperWeight"));
                 bean.setMetalWeight(rs.getDouble("metalWeight"));
 
+                // Populate quotation amount
+                bean.setQuotationAmount(getQuotationAmount(bean.getRequestID()));
+
                 list.add(bean);
             }
         } catch (SQLException e) {
@@ -58,7 +64,7 @@ public class RequestDao {
     // Retrieve requests by Status (e.g., 'Pending', 'Pending Pickup')
     public List<RequestBean> getRequestsByStatus(String status) {
         List<RequestBean> list = new ArrayList<>();
-        String sql = "SELECT r.*, c.fullName, a.addressLine1, a.city " +
+        String sql = "SELECT r.*, c.fullName, c.bankName, c.bankAccountNo, a.addressLine1, a.city " +
                 "FROM PickupRequest r " +
                 "JOIN Customer c ON r.customerID = c.customerID " +
                 "LEFT JOIN Address a ON r.addressID = a.addressID " +
@@ -81,6 +87,9 @@ public class RequestDao {
                 bean.setEstimatedWeight(rs.getDouble("estimatedWeight"));
 
                 bean.setCustomerName(rs.getString("fullName"));
+                bean.setBankName(rs.getString("bankName"));
+                bean.setBankAccountNumber(rs.getString("bankAccountNo"));
+
                 String addr = rs.getString("addressLine1");
                 if (rs.getString("city") != null) {
                     addr += ", " + rs.getString("city");
@@ -93,6 +102,9 @@ public class RequestDao {
                 bean.setPlasticWeight(rs.getDouble("plasticWeight"));
                 bean.setPaperWeight(rs.getDouble("paperWeight"));
                 bean.setMetalWeight(rs.getDouble("metalWeight"));
+
+                // Populate quotation amount
+                bean.setQuotationAmount(getQuotationAmount(bean.getRequestID()));
 
                 list.add(bean);
             }
@@ -280,7 +292,7 @@ public class RequestDao {
 
     // Get request by ID (for viewing details)
     public RequestBean getRequestById(int requestID) {
-        String sql = "SELECT r.*, c.fullName, a.addressLine1, a.city " +
+        String sql = "SELECT r.*, c.fullName, c.bankName, c.bankAccountNo, a.addressLine1, a.city " +
                 "FROM PickupRequest r " +
                 "JOIN Customer c ON r.customerID = c.customerID " +
                 "LEFT JOIN Address a ON r.addressID = a.addressID " +
@@ -307,11 +319,17 @@ public class RequestDao {
                 bean.setPickupTime(rs.getString("pickupTime"));
 
                 bean.setCustomerName(rs.getString("fullName"));
+                bean.setBankName(rs.getString("bankName"));
+                bean.setBankAccountNumber(rs.getString("bankAccountNo"));
+
                 String addr = rs.getString("addressLine1");
                 if (rs.getString("city") != null) {
                     addr += ", " + rs.getString("city");
                 }
                 bean.setFullAddress(addr);
+
+                // Populate quotation amount
+                bean.setQuotationAmount(getQuotationAmount(bean.getRequestID()));
 
                 return bean;
             }
@@ -404,4 +422,165 @@ public class RequestDao {
         return counts;
     }
 
+    // ANALYTICS METHODS
+
+    // Total Revenue (Sum of quoted amounts for completed payments)
+    public double getTotalRevenue() {
+        double total = 0.0;
+        String sql = "SELECT SUM(q.totalAmount) FROM Quotation q " +
+                "JOIN PickupRequest r ON q.requestID = r.requestID " +
+                "WHERE r.status = 'Payment Completed' AND q.quotationType = 'VERIFIED'";
+
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                total = rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return total;
+    }
+
+    // Total Waste Weights (Plastic, Paper, Metal)
+    public double[] getTotalWasteWeights() {
+        double[] weights = { 0.0, 0.0, 0.0 }; // [Plastic, Paper, Metal]
+        String sql = "SELECT SUM(plasticWeight), SUM(paperWeight), SUM(metalWeight) FROM PickupRequest " +
+                "WHERE status IN ('Payment Completed', 'Pending Payment')";
+
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                weights[0] = rs.getDouble(1);
+                weights[1] = rs.getDouble(2);
+                weights[2] = rs.getDouble(3);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return weights;
+    }
+
+    // Get Recent Transactions (Last 5 completed)
+    public List<RequestBean> getRecentTransactions() {
+        List<RequestBean> list = new ArrayList<>();
+        String sql = "SELECT r.*, c.fullName, c.bankName, c.bankAccountNo, a.addressLine1, a.city " +
+                "FROM PickupRequest r " +
+                "JOIN Customer c ON r.customerID = c.customerID " +
+                "LEFT JOIN Address a ON r.addressID = a.addressID " +
+                "WHERE r.status = 'Payment Completed' " +
+                "ORDER BY r.requestID DESC FETCH FIRST 5 ROWS ONLY";
+
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            // Fallback for older Derby drivers usually handled by SQL limit, but ensuring
+            // driver safety
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                RequestBean bean = new RequestBean();
+                bean.setRequestID(rs.getInt("requestID"));
+                bean.setCustomerName(rs.getString("fullName"));
+                bean.setStatus(rs.getString("status"));
+                bean.setPickupDate(rs.getDate("pickupDate"));
+                bean.setQuotationAmount(getQuotationAmount(bean.getRequestID()));
+                list.add(bean);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // --- STAFF DASHBOARD ANALYTICS ---
+
+    // 1. Total Pending Pickups (Global)
+    public int getPendingPickupCount() {
+        String sql = "SELECT COUNT(*) FROM PickupRequest WHERE status = 'Pending Pickup'";
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            if (rs.next())
+                return rs.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    // 2. My Verifications Count
+    public int getStaffVerificationCount(String staffID) {
+        // Count unique requests verified by this staff (INITIAL quote created by staff)
+        String sql = "SELECT COUNT(DISTINCT requestID) FROM Quotation WHERE staffID = ? AND quotationType = 'INITIAL'";
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, staffID);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    // 3. My Total Verified Weight
+    public double getStaffTotalVerifiedWeight(String staffID) {
+        String sql = "SELECT SUM(actualWeight) FROM Quotation WHERE staffID = ? AND quotationType = 'INITIAL'";
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, staffID);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
+
+    // 4. Today's Pickups
+    public List<RequestBean> getTodayPickups() {
+        List<RequestBean> list = new ArrayList<>();
+        // Note: DATE(pickupDate) check depends on DB. For Derby/Standard SQL, usually
+        // just date comparison works if column is DATE type.
+        // Assuming pickupDate is DATE type.
+        String sql = "SELECT r.*, c.fullName, a.addressLine1, a.city " +
+                "FROM PickupRequest r " +
+                "JOIN Customer c ON r.customerID = c.customerID " +
+                "LEFT JOIN Address a ON r.addressID = a.addressID " +
+                "WHERE r.pickupDate = CURRENT_DATE AND r.status = 'Pending Pickup' " +
+                "ORDER BY r.pickupTime ASC";
+
+        try (Connection conn = DBConnection.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                RequestBean bean = new RequestBean();
+                bean.setRequestID(rs.getInt("requestID"));
+                bean.setCustomerName(rs.getString("fullName"));
+                bean.setPickupTime(rs.getString("pickupTime"));
+                bean.setEstimatedWeight(rs.getDouble("estimatedWeight"));
+
+                String addr = rs.getString("addressLine1");
+                if (rs.getString("city") != null) {
+                    addr += ", " + rs.getString("city");
+                }
+                bean.setFullAddress(addr);
+
+                list.add(bean);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

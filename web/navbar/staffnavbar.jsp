@@ -13,7 +13,7 @@
                         <i class="fas fa-user-tie"></i>&nbsp; <%= navbarName %>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right">
-                        <a href="${pageContext.request.contextPath}/staff/profile.jsp" class="dropdown-item">
+                        <a href="${pageContext.request.contextPath}/StaffProfileServlet" class="dropdown-item">
                             <i class="fas fa-user-cog mr-2"></i> Profile
                         </a>
                         <div class="dropdown-divider"></div>
