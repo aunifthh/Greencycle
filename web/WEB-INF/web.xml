@@ -1,32 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app version="3.1" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd">
-    <servlet>
-        <servlet-name>CustomerDashboardServlet</servlet-name>
-        <servlet-class>Greencycle.controller.CustomerDashboardServlet</servlet-class>
-    </servlet>
-    <servlet>
-        <servlet-name>CustomerMgmtServlet</servlet-name>
-        <servlet-class>Greencycle.controller.CustomerMgmtServlet</servlet-class>
-    </servlet>
-    <servlet>
-        <servlet-name>RecyclableItemServlet</servlet-name>
-        <servlet-class>Greencycle.controller.RecyclableItemServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>CustomerDashboardServlet</servlet-name>
-        <url-pattern>/CustomerDashboardServlet</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>CustomerMgmtServlet</servlet-name>
-        <url-pattern>/CustomerMgmtServlet</url-pattern>
-    </servlet-mapping>
-    <servlet-mapping>
-        <servlet-name>RecyclableItemServlet</servlet-name>
-        <url-pattern>/RecyclableItemServlet</url-pattern>
-    </servlet-mapping>
-    <session-config>
-        <session-timeout>
-            30
-        </session-timeout>
-    </session-config>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                             http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1">
+
+    <display-name>Greencycle</display-name>
+
+    <!-- Context params (optional) -->
+    <!--
+    <context-param>
+        <param-name>exampleParam</param-name>
+        <param-value>value</param-value>
+    </context-param>
+    -->
+
+    <!-- Welcome file -->
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+    <!-- Error pages (optional) -->
+    <!--
+    <error-page>
+        <error-code>404</error-code>
+        <location>/error404.jsp</location>
+    </error-page>
+    -->
+
 </web-app>
